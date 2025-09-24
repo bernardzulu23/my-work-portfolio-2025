@@ -466,6 +466,7 @@ import { ConfirmationDialogComponent } from '../../shared/components/confirmatio
 export class AdminComponent implements OnInit {
   private router = inject(Router);
   protected authService = inject(AuthService);
+  private adminService = inject(AdminService);
 
   // Active tab state
   activeTab = signal<'blog' | 'skills' | 'experience' | 'projects' | 'certificates'>('blog');
@@ -503,8 +504,6 @@ export class AdminComponent implements OnInit {
 
   // Computed stats
   stats = computed(() => this.adminService.getStats());
-
-  constructor(private adminService: AdminService) {}
 
   ngOnInit() {
     this.loadData();

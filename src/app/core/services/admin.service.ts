@@ -200,52 +200,52 @@ export class AdminService {
       ]);
 
       // Transform data to match Admin service interfaces
-      const transformedBlogPosts = blogPosts.map(post => ({
-        ...post,
-        publishDate: new Date(post.publish_date),
-        readTime: post.read_time || 5
+      const transformedBlogPosts = blogPosts.map((post: unknown) => ({
+        ...(post as any),
+        publishDate: new Date((post as any).publish_date),
+        readTime: (post as any).read_time || 5
       }));
 
-      const transformedSkills = skills.map(skill => ({
-        ...skill,
-        yearsOfExperience: skill.years_of_experience || 0
+      const transformedSkills = skills.map((skill: unknown) => ({
+        ...(skill as any),
+        yearsOfExperience: (skill as any).years_of_experience || 0
       }));
 
-      const transformedWorkExperience = workExperience.map(exp => ({
-        ...exp,
-        startDate: new Date(exp.start_date),
-        endDate: exp.end_date ? new Date(exp.end_date) : undefined,
-        employmentType: exp.employment_type || 'Full-time'
+      const transformedWorkExperience = workExperience.map((exp: unknown) => ({
+        ...(exp as any),
+        startDate: new Date((exp as any).start_date),
+        endDate: (exp as any).end_date ? new Date((exp as any).end_date) : undefined,
+        employmentType: (exp as any).employment_type || 'Full-time'
       }));
 
-      const transformedEducation = education.map(edu => ({
-        ...edu,
-        startDate: new Date(edu.start_date),
-        endDate: edu.end_date ? new Date(edu.end_date) : undefined
+      const transformedEducation = education.map((edu: unknown) => ({
+        ...(edu as any),
+        startDate: new Date((edu as any).start_date),
+        endDate: (edu as any).end_date ? new Date((edu as any).end_date) : undefined
       }));
 
-      const transformedProjects = projects.map(project => ({
-        ...project,
-        imageUrl: project.image_url || '/assets/projects/default.jpg'
+      const transformedProjects = projects.map((project: unknown) => ({
+        ...(project as any),
+        imageUrl: (project as any).image_url || '/assets/projects/default.jpg'
       }));
 
-      const transformedCertificates = certificates.map(cert => ({
-        ...cert,
-        issueDate: new Date(cert.issue_date),
-        expiryDate: cert.expiry_date ? new Date(cert.expiry_date) : undefined,
-        pdfUrl: cert.pdf_url || '',
-        thumbnailUrl: cert.thumbnail_url || '',
-        verificationBadge: cert.verification_badge || false
+      const transformedCertificates = certificates.map((cert: unknown) => ({
+        ...(cert as any),
+        issueDate: new Date((cert as any).issue_date),
+        expiryDate: (cert as any).expiry_date ? new Date((cert as any).expiry_date) : undefined,
+        pdfUrl: (cert as any).pdf_url || '',
+        thumbnailUrl: (cert as any).thumbnail_url || '',
+        verificationBadge: (cert as any).verification_badge || false
       }));
 
-      const transformedTestimonials = testimonials.map(testimonial => ({
-        ...testimonial,
-        date: new Date(testimonial.date)
+      const transformedTestimonials = testimonials.map((testimonial: unknown) => ({
+        ...(testimonial as any),
+        date: new Date((testimonial as any).date)
       }));
 
-      const transformedRecommendations = recommendations.map(recommendation => ({
-        ...recommendation,
-        date: new Date(recommendation.date)
+      const transformedRecommendations = recommendations.map((recommendation: unknown) => ({
+        ...(recommendation as any),
+        date: new Date((recommendation as any).date)
       }));
 
       this.setBlogPosts(transformedBlogPosts);

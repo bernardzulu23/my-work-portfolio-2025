@@ -516,7 +516,7 @@ export class PortfolioService {
         name: item.name,
         category: item.category,
         proficiency: item.proficiency,
-        yearsOfExperience: item.years_of_experience,
+        yearsOfExperience: item.years_of_experience || 0,
         certifications: item.certifications || [],
         projects: item.projects || 0
       }));
@@ -544,9 +544,9 @@ export class PortfolioService {
         issueDate: new Date(item.issue_date),
         expiryDate: item.expiry_date ? new Date(item.expiry_date) : undefined,
         category: item.category,
-        pdfUrl: item.pdf_url,
-        thumbnailUrl: item.thumbnail_url,
-        verificationBadge: item.verification_badge,
+        pdfUrl: item.pdf_url || '',
+        thumbnailUrl: item.thumbnail_url || '',
+        verificationBadge: item.verification_badge || false,
         issuerVerification: item.issuer_verification,
         credentialId: item.credential_id
       }));
@@ -574,8 +574,8 @@ export class PortfolioService {
         technologies: item.technologies || [],
         githubUrl: item.github_url,
         liveUrl: item.live_url,
-        imageUrl: item.image_url,
-        featured: item.featured
+        imageUrl: item.image_url || '/assets/projects/default.jpg',
+        featured: item.featured || false
       }));
 
       this.setProjects(projects);
@@ -598,13 +598,13 @@ export class PortfolioService {
         id: item.id,
         title: item.title,
         content: item.content,
-        excerpt: item.excerpt,
+        excerpt: item.excerpt || '',
         author: item.author,
         publishDate: new Date(item.publish_date),
         tags: item.tags || [],
         category: item.category,
-        readTime: item.read_time,
-        featured: item.featured
+        readTime: item.read_time || 5,
+        featured: item.featured || false
       }));
 
       this.setBlogPosts(blogPosts);
