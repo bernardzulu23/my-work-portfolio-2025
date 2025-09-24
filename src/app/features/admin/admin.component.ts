@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, computed, inject } from '@angular/core';
+import { Component, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { AdminService, BlogPost, Skill, WorkExperience, Project, Certificate } from '../../core/services/admin.service';
@@ -464,9 +464,11 @@ import { ConfirmationDialogComponent } from '../../shared/components/confirmatio
   `]
 })
 export class AdminComponent implements OnInit {
-  private router = inject(Router);
-  protected authService = inject(AuthService);
-  private adminService = inject(AdminService);
+  constructor(
+    private router: Router,
+    protected authService: AuthService,
+    private adminService: AdminService
+  ) {}
 
   // Active tab state
   activeTab = signal<'blog' | 'skills' | 'experience' | 'projects' | 'certificates'>('blog');
