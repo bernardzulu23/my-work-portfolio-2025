@@ -136,10 +136,10 @@ test-results/
 playwright-report/
 playwright/.cache/
 
-# Security sensitive files
-src/app/core/services/supabase.service.ts
-src/app/core/services/auth.service.ts
-src/app/core/services/security.service.ts
+# Security sensitive files (removed for portfolio functionality)
+# src/app/core/services/supabase.service.ts
+# src/app/core/services/auth.service.ts
+# src/app/core/services/security.service.ts
 
 # Documentation with sensitive info
 docs/api-keys.md
