@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, computed } from '@angular/core';
+import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { AdminService, BlogPost, Skill, WorkExperience, Project, Certificate } from '../../core/services/admin.service';
@@ -464,9 +464,10 @@ import { ConfirmationDialogComponent } from '../../shared/components/confirmatio
   `]
 })
 export class AdminComponent implements OnInit {
+  protected authService = inject(AuthService);
+
   constructor(
     private router: Router,
-    protected authService: AuthService,
     private adminService: AdminService
   ) {}
 

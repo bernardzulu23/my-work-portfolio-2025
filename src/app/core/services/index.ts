@@ -9,6 +9,10 @@ export { CacheService } from './cache.service';
 export { ExportService } from './export.service';
 export { PortfolioService } from './portfolio.service';
 export { ThemeService } from './theme.service';
+export { AuthService } from './auth.service';
+export { SecurityService } from './security.service';
+export { SupabaseService } from './supabase.service';
+export { AdminService } from './admin.service';
 
 // Re-export interfaces for convenience
 export type {
@@ -44,3 +48,15 @@ export type {
   ExportFormat,
   ExportOptions
 } from './export.service';
+
+export type {
+  AuthUser,
+  LoginCredentials,
+  SignUpCredentials
+} from './auth.service';
+
+export type {
+  SecurityEvent,
+  RateLimitStatus,
+  RateLimitConfig
+} from './security.service';

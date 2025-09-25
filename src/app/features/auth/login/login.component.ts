@@ -2,9 +2,9 @@ import { Component, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { AuthService, LoginCredentials } from '../../../core/services/auth.service';
+import { AuthService, LoginCredentials } from '../../../core/services';
 import { NotificationService } from '../../../shared/services/notification.service';
-import { SecurityService } from '../../../core/services/security.service';
+import { SecurityService } from '../../../core/services';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
 import { SanitizeHtmlPipe } from '../../../shared/pipes';
 
