@@ -152,7 +152,7 @@ interface NavItem {
 })
 export class NavigationComponent {
   private router = inject(Router);
-  protected authService = inject(AuthService);
+  protected authService: AuthService = inject(AuthService);
 
   protected mobileMenuOpen = signal<boolean>(false);
   protected isLoggingOut = signal<boolean>(false);
