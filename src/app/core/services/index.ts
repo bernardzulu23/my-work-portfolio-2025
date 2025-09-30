@@ -57,6 +57,5 @@ export type {
 
 export type {
   SecurityEvent,
-  RateLimitStatus,
-  RateLimitConfig
+  RateLimitStatus
 } from './security.service';

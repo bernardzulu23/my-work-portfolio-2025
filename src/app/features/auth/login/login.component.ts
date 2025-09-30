@@ -4,7 +4,7 @@ import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angula
 import { Router } from '@angular/router';
 import { AuthService, LoginCredentials } from '../../../core/services';
 import { NotificationService } from '../../../shared/services/notification.service';
-import { SecurityService } from '../../../core/services';
+import { SecurityService, RateLimitStatus } from '../../../core/services';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
 import { SanitizeHtmlPipe } from '../../../shared/pipes';
 
@@ -125,7 +125,7 @@ export class LoginComponent {
   loginForm: FormGroup;
   isLoading = signal(false);
   loginError = signal<string | null>(null);
-  rateLimitStatus = signal<{ attempts: number; blockedUntil?: Date; isBlocked: boolean } | null>(null);
+  rateLimitStatus = signal<RateLimitStatus | null>(null);
 
   constructor() {
     this.loginForm = this.fb.group({
@@ -236,6 +236,7 @@ export class LoginComponent {
     return btoa(navigator.userAgent).substring(0, 16);
   }
 
+  
   private formatTime(date: Date): string {
     const diff = Math.ceil((date.getTime() - Date.now()) / 1000 / 60);
     return `${diff} minutes`;

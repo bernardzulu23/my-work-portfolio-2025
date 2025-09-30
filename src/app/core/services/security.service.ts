@@ -18,7 +18,7 @@ export interface RateLimitStatus {
 }
 
 export interface SecurityEvent {
-  type: 'login_attempt' | 'xss_attempt' | 'rate_limit' | 'admin_access' | 'security_violation';
+  type: 'login_attempt' | 'xss_attempt' | 'rate_limit' | 'admin_access' | 'security_violation' | 'rate_limit_exceeded' | 'suspicious_activity';
   timestamp: Date;
   details: string;
   clientId?: string;
