@@ -15,8 +15,8 @@ yarn-error.log*
 .env.development.local
 .env.test.local
 .env.production.local
-src/environments/environment.ts
-src/environments/environment.prod.ts
+#src/environments/environment.ts
+#src/environments/environment.prod.ts
 
 # IDE and editor files
 .vscode/
