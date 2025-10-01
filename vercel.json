@@ -1,6 +1,6 @@
 {
   "buildCommand": "npm run build",
-  "outputDirectory": "dist/angular-portfolio-2025",
+  "outputDirectory": "dist/angular-portfolio-2025/browser",
   "framework": "angular",
   "rewrites": [
     {
