@@ -79,7 +79,7 @@ interface NavItem {
             <!-- Mobile menu button -->
             <button
               (click)="toggleMobileMenu()"
-              class="md:hidden inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
+              class="md:hidden mobile-menu-button inline-flex items-center justify-center w-12 h-12 p-3 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
               [attr.aria-expanded]="mobileMenuOpen()">
               <span class="sr-only">Open main menu</span>
               <!-- Hamburger icon -->
@@ -148,6 +148,10 @@ interface NavItem {
     .router-link-active {
       @apply text-blue-600 dark:text-blue-400;
     }
+
+    .mobile-menu-button {
+      touch-action: manipulation;
+    }
   `]
 })
 export class NavigationComponent {
@@ -180,7 +184,9 @@ export class NavigationComponent {
   });
 
   toggleMobileMenu() {
+    console.log('toggleMobileMenu called');
     this.mobileMenuOpen.set(!this.mobileMenuOpen());
+    console.log('mobileMenuOpen:', this.mobileMenuOpen());
   }
 
   closeMobileMenu() {
