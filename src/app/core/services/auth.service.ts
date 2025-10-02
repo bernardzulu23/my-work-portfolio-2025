@@ -196,8 +196,21 @@ export class AuthService {
       }
 
       if (data.user) {
-        // Check if user has admin role
-        const userRole = data.user.user_metadata?.['role'];
+        // Fetch role from profiles table for admin check
+        const { data: profileData, error: profileError } = await this.supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', data.user.id)
+          .single();
+
+        if (profileError) {
+          console.error('Error fetching user role from profiles:', profileError);
+          await this.signOut();
+          this.securityService.recordLoginAttempt(clientIdentifier, false);
+          return { success: false, error: 'Access denied. Admin privileges required.' };
+        }
+
+        const userRole = profileData?.role || 'user';
         if (userRole !== 'admin') {
           await this.signOut();
           this.securityService.recordLoginAttempt(clientIdentifier, false);
