@@ -19,6 +19,16 @@ module.exports = {
           900: '#1e3a8a',
           950: '#172554',
         },
+        accent: {
+          purple: '#8b5cf6',
+          cyan: '#06b6d4',
+          emerald: '#10b981',
+          amber: '#f59e0b',
+        },
+        success: '#10b981',
+        warning: '#f59e0b',
+        error: '#ef4444',
+        info: '#3b82f6',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
