@@ -100,10 +100,22 @@ export class AuthService {
   private async setSession(session: Session) {
     try {
       const user = session.user;
+
+      // Fetch role from profiles table instead of user_metadata
+      const { data: profileData, error: profileError } = await this.supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+
+      if (profileError) {
+        console.error('Error fetching user role from profiles:', profileError);
+      }
+
       const authUser: AuthUser = {
         id: user.id,
         email: user.email!,
-        role: user.user_metadata?.['role'] || 'user',
+        role: profileData?.role || 'user',
         created_at: user.created_at,
         updated_at: user.updated_at || user.created_at
       };
