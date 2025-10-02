@@ -495,3 +495,81 @@ input::placeholder, textarea::placeholder {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ===================================
+   Mobile Navigation Fixes
+   =================================== */
+
+@media (max-width: 768px) {
+  /* Ensure navigation is accessible */
+  nav {
+    position: relative;
+    z-index: 50;
+  }
+
+  /* Mobile menu content positioning */
+  .mobile-menu-content {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background-color: var(--bg-card);
+    border-top: 1px solid var(--border-color);
+    box-shadow: var(--shadow-lg);
+    z-index: 50;
+  }
+
+  /* Ensure mobile menu links are clickable */
+  .mobile-menu-link {
+    display: block;
+    padding: 0.75rem 1rem;
+    color: var(--text-primary);
+    text-decoration: none;
+    border-bottom: 1px solid var(--border-color);
+    transition: background-color 0.2s ease;
+    min-height: 44px; /* iOS touch target minimum */
+    display: flex;
+    align-items: center;
+  }
+
+  .mobile-menu-link:hover,
+  .mobile-menu-link:focus {
+    background-color: var(--bg-secondary);
+  }
+
+  .mobile-menu-link:last-child {
+    border-bottom: none;
+  }
+
+  /* Mobile menu button improvements */
+  .mobile-menu-button {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Prevent body scroll when mobile menu is open */
+  body.mobile-menu-open {
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+  }
+
+  /* General mobile container fixes */
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  /* Ensure buttons are properly sized on mobile */
+  .btn-primary {
+    min-height: 44px;
+    font-size: 1rem;
+  }
+
+  /* Improve touch targets */
+  button, a, input, select, textarea {
+    min-height: 44px;
+  }
+}

@@ -1,6 +1,7 @@
-import { Component, inject, signal, computed } from '@angular/core';
+import { Component, inject, signal, computed, effect, Inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
+import { DOCUMENT } from '@angular/common';
 import { ThemeToggleComponent } from '../theme-toggle/theme-toggle.component';
 import { AuthService } from '../../../core/services/auth.service';
 import { LoadingSpinnerComponent } from '../loading-spinner/loading-spinner.component';
@@ -95,14 +96,14 @@ interface NavItem {
         </div>
 
         <!-- Mobile Navigation -->
-        <div *ngIf="mobileMenuOpen()" class="md:hidden border-t border-gray-200 dark:border-gray-700">
+        <div *ngIf="mobileMenuOpen()" class="mobile-menu-content">
           <div class="px-2 pt-2 pb-3 space-y-1">
             <a *ngFor="let item of visibleNavItems()"
                [routerLink]="item.path"
                routerLinkActive="bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
                [routerLinkActiveOptions]="{exact: true}"
                (click)="closeMobileMenu()"
-               class="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 block px-3 py-2 rounded-md text-base font-medium transition-colors duration-200 flex items-center space-x-2">
+               class="mobile-menu-link">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path [attr.d]="getIconPath(item.icon)" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
               </svg>
@@ -124,7 +125,7 @@ interface NavItem {
                 *ngIf="!authService.loading()"
                 (click)="authService.isAuthenticated() ? logout() : navigateToLogin()"
                 [disabled]="isLoggingOut()"
-                class="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 block w-full text-left px-3 py-2 rounded-md text-base font-medium transition-colors duration-200 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                class="mobile-menu-link w-full text-left disabled:opacity-50 disabled:cursor-not-allowed">
                 <svg *ngIf="isLoggingOut()" class="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
                 </svg>
@@ -156,10 +157,29 @@ interface NavItem {
 })
 export class NavigationComponent {
   private router = inject(Router);
+  private document = inject(DOCUMENT);
   protected authService: AuthService = inject(AuthService);
 
   protected mobileMenuOpen = signal<boolean>(false);
   protected isLoggingOut = signal<boolean>(false);
+
+  constructor() {
+    // Toggle body class when mobile menu opens/closes
+    effect(() => {
+      if (this.mobileMenuOpen()) {
+        this.document.body.classList.add('mobile-menu-open');
+      } else {
+        this.document.body.classList.remove('mobile-menu-open');
+      }
+    });
+
+    // Close mobile menu when resizing to desktop view
+    window.addEventListener('resize', () => {
+      if (window.innerWidth > 768 && this.mobileMenuOpen()) {
+        this.mobileMenuOpen.set(false);
+      }
+    });
+  }
 
   protected navItems: NavItem[] = [
     { label: 'Home', path: '/', icon: 'home' },
