@@ -135,7 +135,11 @@ export class LoginComponent {
 
     // Redirect if already authenticated
     if (this.authService.isAuthenticated()) {
-      this.router.navigate(['/admin']);
+      if (this.authService.isAdmin()) {
+        this.router.navigate(['/admin']);
+      } else {
+        this.router.navigate(['/admin-setup']);
+      }
     }
 
     // Check rate limit status on component init
@@ -163,7 +167,12 @@ export class LoginComponent {
 
       if (result.success) {
         this.notificationService.success('Success', 'Successfully logged in!');
-        this.router.navigate(['/admin']);
+        // Check if user has admin role, if not redirect to admin setup
+        if (this.authService.isAdmin()) {
+          this.router.navigate(['/admin']);
+        } else {
+          this.router.navigate(['/admin-setup']);
+        }
       } else {
         this.loginError.set(result.error || 'Login failed');
       }

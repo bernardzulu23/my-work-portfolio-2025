@@ -573,3 +573,11 @@ input::placeholder, textarea::placeholder {
     min-height: 44px;
   }
 }
+
+/* Global SVG icon size constraints */
+svg {
+  max-width: 24px;
+  max-height: 24px;
+  width: auto;
+  height: auto;
+}
