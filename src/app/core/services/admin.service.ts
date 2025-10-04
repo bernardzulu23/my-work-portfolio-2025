@@ -2,6 +2,7 @@ import { Injectable, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, BehaviorSubject } from 'rxjs';
 
+import { environment } from '../../../environments/environment';
 import { SupabaseService } from './supabase.service';
 import type { Testimonial, Recommendation } from '../types';
 
@@ -172,8 +173,22 @@ export class AdminService {
       await this.loadDataFromSupabase();
     } catch (error) {
       console.error('Error loading data from Supabase:', error);
-      // Fallback to mock data if Supabase fails
-      this.loadMockData();
+      console.error('Supabase connection details:', {
+        url: environment.supabase.url,
+        hasAnonKey: !!environment.supabase.anonKey,
+        errorType: (error as Error)?.name,
+        errorMessage: (error as Error)?.message
+      });
+
+      // Only fallback to mock data in development or if explicitly allowed
+      if (!environment.production) {
+        console.warn('Falling back to mock data in development mode');
+        this.loadMockData();
+      } else {
+        console.error('Production mode: Not falling back to mock data. Supabase connection failed.');
+        // In production, throw the error instead of using mock data
+        throw error;
+      }
     }
   }
 
