@@ -74,12 +74,6 @@
       ]
     }
   ],
-  "functions": {
-    "api/**/*.ts": {
-      "memory": 1024,
-      "maxDuration": 10
-    }
-  },
   "trailingSlash": false,
   "cleanUrls": true,
   "env": {
