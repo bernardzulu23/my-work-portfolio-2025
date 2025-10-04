@@ -1,8 +1,9 @@
 import { Injectable, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, BehaviorSubject } from 'rxjs';
-import { Testimonial, Recommendation } from '../../features/testimonials/testimonials.component';
+
 import { SupabaseService } from './supabase.service';
+import type { Testimonial, Recommendation } from '../types';
 
 export interface About {
   id: string;

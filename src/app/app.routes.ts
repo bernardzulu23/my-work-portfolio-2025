@@ -31,6 +31,11 @@ export const routes: Routes = [
     loadComponent: () => import('./features/contact/contact.component').then(m => m.ContactComponent)
   },
   {
+    path: 'admin-setup',
+    loadComponent: () => import('./features/admin/admin-setup.component').then(m => m.AdminSetupComponent),
+    canActivate: [AuthGuard]
+  },
+  {
     path: 'admin',
     loadComponent: () => import('./features/admin/admin.component').then(m => m.AdminComponent),
     canActivate: [AdminGuard]

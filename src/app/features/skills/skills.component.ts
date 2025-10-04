@@ -1,7 +1,6 @@
 import { Component, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { PortfolioService, Skill } from '../../core/services/portfolio.service';
-
+import { AdminService } from '../../core/services/admin.service';
 
 @Component({
   selector: 'app-skills',
@@ -172,9 +171,9 @@ import { PortfolioService, Skill } from '../../core/services/portfolio.service';
               <span class="font-medium text-gray-900 dark:text-white">Frontend Development</span>
               <div class="flex items-center space-x-2">
                 <div class="w-24 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
-                  <div class="bg-blue-600 h-2 rounded-full" style="width: 90%"></div>
+                  <div class="bg-blue-600 h-2 rounded-full" [style.width.%]="getCategoryAverageProficiency('Frontend')"></div>
                 </div>
-                <span class="text-sm text-gray-600 dark:text-gray-400">90%</span>
+                <span class="text-sm text-gray-600 dark:text-gray-400">{{getCategoryAverageProficiency('Frontend')}}%</span>
               </div>
             </div>
 
@@ -182,9 +181,9 @@ import { PortfolioService, Skill } from '../../core/services/portfolio.service';
               <span class="font-medium text-gray-900 dark:text-white">Backend Development</span>
               <div class="flex items-center space-x-2">
                 <div class="w-24 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
-                  <div class="bg-purple-600 h-2 rounded-full" style="width: 85%"></div>
+                  <div class="bg-purple-600 h-2 rounded-full" [style.width.%]="getCategoryAverageProficiency('Backend')"></div>
                 </div>
-                <span class="text-sm text-gray-600 dark:text-gray-400">85%</span>
+                <span class="text-sm text-gray-600 dark:text-gray-400">{{getCategoryAverageProficiency('Backend')}}%</span>
               </div>
             </div>
 
@@ -192,9 +191,9 @@ import { PortfolioService, Skill } from '../../core/services/portfolio.service';
               <span class="font-medium text-gray-900 dark:text-white">Database Design</span>
               <div class="flex items-center space-x-2">
                 <div class="w-24 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
-                  <div class="bg-green-600 h-2 rounded-full" style="width: 80%"></div>
+                  <div class="bg-green-600 h-2 rounded-full" [style.width.%]="getCategoryAverageProficiency('Database') || 75"></div>
                 </div>
-                <span class="text-sm text-gray-600 dark:text-gray-400">80%</span>
+                <span class="text-sm text-gray-600 dark:text-gray-400">{{getCategoryAverageProficiency('Database') || 75}}%</span>
               </div>
             </div>
 
@@ -202,9 +201,9 @@ import { PortfolioService, Skill } from '../../core/services/portfolio.service';
               <span class="font-medium text-gray-900 dark:text-white">DevOps & Tools</span>
               <div class="flex items-center space-x-2">
                 <div class="w-24 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
-                  <div class="bg-indigo-600 h-2 rounded-full" style="width: 75%"></div>
+                  <div class="bg-indigo-600 h-2 rounded-full" [style.width.%]="getCategoryAverageProficiency('Tools')"></div>
                 </div>
-                <span class="text-sm text-gray-600 dark:text-gray-400">75%</span>
+                <span class="text-sm text-gray-600 dark:text-gray-400">{{getCategoryAverageProficiency('Tools')}}%</span>
               </div>
             </div>
           </div>
@@ -233,9 +232,19 @@ import { PortfolioService, Skill } from '../../core/services/portfolio.service';
   `]
 })
 export class SkillsComponent {
-  private portfolioService = inject(PortfolioService);
+  private adminService = inject(AdminService);
 
-  protected getSkillsByCategory(category: string): Skill[] {
-    return this.portfolioService.getSkills().filter(skill => skill.category === category);
+  protected skills = computed(() => this.adminService.getSkills());
+
+  protected getSkillsByCategory(category: string) {
+    return this.skills().filter(skill => skill.category === category);
+  }
+
+  protected getCategoryAverageProficiency(category: string): number {
+    const categorySkills = this.getSkillsByCategory(category);
+    if (categorySkills.length === 0) return 0;
+
+    const totalProficiency = categorySkills.reduce((sum, skill) => sum + skill.proficiency, 0);
+    return Math.round(totalProficiency / categorySkills.length);
   }
 }

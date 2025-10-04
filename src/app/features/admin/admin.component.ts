@@ -1,9 +1,10 @@
 import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-import { AdminService, BlogPost, Skill, WorkExperience, Project, Certificate } from '../../core/services/admin.service';
+import { AdminService, BlogPost, Skill, WorkExperience, Project, Certificate, About } from '../../core/services/admin.service';
 import { AuthService } from '../../core/services/auth.service';
 import { ModalComponent } from '../../shared/components/modal/modal.component';
+import { AboutFormComponent } from './components/about-form/about-form.component';
 import { BlogFormComponent } from './components/blog-form/blog-form.component';
 import { SkillFormComponent } from './components/skill-form/skill-form.component';
 import { ExperienceFormComponent } from './components/experience-form/experience-form.component';
@@ -19,6 +20,7 @@ import { ConfirmationDialogComponent } from '../../shared/components/confirmatio
   imports: [
     CommonModule,
     ModalComponent,
+    AboutFormComponent,
     BlogFormComponent,
     SkillFormComponent,
     ExperienceFormComponent,
@@ -95,6 +97,12 @@ import { ConfirmationDialogComponent } from '../../shared/components/confirmatio
       <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg">
         <div class="border-b border-gray-200 dark:border-gray-700">
           <nav class="-mb-px flex space-x-8 px-6" aria-label="Tabs">
+            <button
+              (click)="activeTab.set('about')"
+              [class]="getTabClass('about')"
+              class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+              About
+            </button>
             <button
               (click)="activeTab.set('blog')"
               [class]="getTabClass('blog')"
@@ -472,9 +480,10 @@ export class AdminComponent implements OnInit {
   ) {}
 
   // Active tab state
-  activeTab = signal<'blog' | 'skills' | 'experience' | 'projects' | 'certificates'>('blog');
+  activeTab = signal<'about' | 'blog' | 'skills' | 'experience' | 'projects' | 'certificates'>('about');
 
   // Modal states
+  aboutModalOpen = signal(false);
   blogModalOpen = signal(false);
   skillModalOpen = signal(false);
   experienceModalOpen = signal(false);
@@ -482,6 +491,7 @@ export class AdminComponent implements OnInit {
   certificateModalOpen = signal(false);
 
   // Selected items for editing
+  selectedAbout = signal<About | null>(null);
   selectedBlogPost = signal<BlogPost | null>(null);
   selectedSkill = signal<Skill | null>(null);
   selectedExperience = signal<WorkExperience | null>(null);
@@ -489,6 +499,7 @@ export class AdminComponent implements OnInit {
   selectedCertificate = signal<Certificate | null>(null);
 
   // Edit states
+  isEditingAbout = signal(false);
   isEditingBlog = signal(false);
   isEditingSkill = signal(false);
   isEditingExperience = signal(false);
@@ -499,6 +510,7 @@ export class AdminComponent implements OnInit {
   isLoggingOut = signal(false);
 
   // Data from service
+  about = signal<About | null>(null);
   blogPosts = signal<BlogPost[]>([]);
   skills = signal<Skill[]>([]);
   workExperience = signal<WorkExperience[]>([]);
@@ -513,6 +525,8 @@ export class AdminComponent implements OnInit {
   }
 
   loadData() {
+    const aboutData = this.adminService.getAbout();
+    this.about.set(aboutData.length > 0 ? aboutData[0] : null);
     this.blogPosts.set(this.adminService.getBlogPosts());
     this.skills.set(this.adminService.getSkills());
     this.workExperience.set(this.adminService.getWorkExperience());

@@ -1,5 +1,5 @@
 import { Injectable, signal, computed } from '@angular/core';
-import { Testimonial, Recommendation } from '../testimonials.component';
+import { Testimonial, Recommendation } from '../../../core/types';
 
 @Injectable({
   providedIn: 'root'
@@ -291,7 +291,7 @@ export class TestimonialsService {
       t.company.toLowerCase().includes(lowerQuery) ||
       t.content.toLowerCase().includes(lowerQuery) ||
       t.project?.toLowerCase().includes(lowerQuery) ||
-      t.skills?.some(skill => skill.toLowerCase().includes(lowerQuery))
+      t.skills?.some((skill: string) => skill.toLowerCase().includes(lowerQuery))
     );
   }
 
@@ -303,7 +303,7 @@ export class TestimonialsService {
       r.author.toLowerCase().includes(lowerQuery) ||
       r.company.toLowerCase().includes(lowerQuery) ||
       r.content.toLowerCase().includes(lowerQuery) ||
-      r.skills?.some(skill => skill.toLowerCase().includes(lowerQuery))
+      r.skills?.some((skill: string) => skill.toLowerCase().includes(lowerQuery))
     );
   }
 

@@ -1,39 +1,7 @@
 import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { TestimonialsService } from './services/testimonials.service';
+import { AdminService } from '../../core/services/admin.service';
 import { SanitizeHtmlPipe } from '../../shared/pipes';
-
-
-export interface Testimonial {
-  id: string;
-  author: string;
-  position: string;
-  company: string;
-  content: string;
-  rating: number;
-  date: Date;
-  avatar?: string;
-  companyLogo?: string;
-  linkedinUrl?: string;
-  verified: boolean;
-  featured: boolean;
-  project?: string;
-  skills?: string[];
-}
-
-export interface Recommendation {
-  id: string;
-  author: string;
-  position: string;
-  company: string;
-  content: string;
-  date: Date;
-  avatar?: string;
-  companyLogo?: string;
-  linkedinUrl?: string;
-  verified: boolean;
-  skills?: string[];
-}
 
 @Component({
   selector: 'app-testimonials',
@@ -326,11 +294,11 @@ export interface Recommendation {
   `]
 })
 export class TestimonialsComponent implements OnInit {
-  private testimonialsService = inject(TestimonialsService);
+  private adminService = inject(AdminService);
 
-  protected featuredTestimonials = computed(() => this.testimonialsService.getFeaturedTestimonials());
-  protected allTestimonials = computed(() => this.testimonialsService.getAllTestimonials());
-  protected recommendations = computed(() => this.testimonialsService.getRecommendations());
+  protected featuredTestimonials = computed(() => this.adminService.getTestimonials().filter(t => t.featured));
+  protected allTestimonials = computed(() => this.adminService.getTestimonials());
+  protected recommendations = computed(() => this.adminService.getRecommendations());
 
   protected currentSlide = signal<number>(0);
   protected totalTestimonials = computed(() => this.allTestimonials().length);
@@ -344,7 +312,7 @@ export class TestimonialsComponent implements OnInit {
   });
 
   ngOnInit() {
-    this.testimonialsService.loadTestimonialsData();
+    this.adminService.loadInitialData();
   }
 
   getStars(rating: number): string[] {

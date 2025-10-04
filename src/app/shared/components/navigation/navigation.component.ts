@@ -4,6 +4,7 @@ import { RouterModule, Router } from '@angular/router';
 import { DOCUMENT } from '@angular/common';
 import { ThemeToggleComponent } from '../theme-toggle/theme-toggle.component';
 import { AuthService } from '../../../core/services/auth.service';
+import { AdminService } from '../../../core/services/admin.service';
 import { LoadingSpinnerComponent } from '../loading-spinner/loading-spinner.component';
 
 interface NavItem {
@@ -27,7 +28,7 @@ interface NavItem {
             <div class="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
               <span class="text-white font-bold text-sm">BZ</span>
             </div>
-            <span class="font-bold text-xl text-gray-900 dark:text-white">Bernard Zulu</span>
+            <span class="font-bold text-xl text-gray-900 dark:text-white">{{displayName()}}</span>
           </div>
 
           <!-- Desktop Navigation -->
@@ -159,9 +160,19 @@ export class NavigationComponent {
   private router = inject(Router);
   private document = inject(DOCUMENT);
   protected authService: AuthService = inject(AuthService);
+  private adminService = inject(AdminService);
 
   protected mobileMenuOpen = signal<boolean>(false);
   protected isLoggingOut = signal<boolean>(false);
+
+  // Computed signal for display name from AdminService
+  protected displayName = computed(() => {
+    const aboutData = this.adminService.getAbout();
+    if (!aboutData || aboutData.length === 0) {
+      return 'Bernard Zulu'; // Fallback to default name
+    }
+    return aboutData[0]?.name || 'Bernard Zulu';
+  });
 
   constructor() {
     // Toggle body class when mobile menu opens/closes

@@ -1,7 +1,7 @@
 import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-import { PortfolioService } from '../../core/services/portfolio.service';
+import { AdminService } from '../../core/services/admin.service';
 import { NotificationService } from '../../shared/services/notification.service';
 import { ExportService } from '../../core/services/export.service';
 
@@ -18,14 +18,13 @@ import { ExportService } from '../../core/services/export.service';
           <div class="max-w-4xl mx-auto text-center">
             <div class="animate-fade-in">
               <h1 class="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
-                Hi, I'm <span class="text-purple-600">Bernard Zulu</span>
+                Hi, I'm <span class="text-purple-600">{{about()?.name}}</span>
               </h1>
               <p class="text-xl md:text-2xl text-gray-600 dark:text-gray-300 mb-8 leading-relaxed">
-                IT Support Specialist | Junior Network Technician | Full-Stack Developer
+                {{about()?.title}}
               </p>
               <p class="text-lg text-gray-500 dark:text-gray-400 mb-12 max-w-2xl mx-auto">
-                I specialize in providing comprehensive IT support, network administration, and full-stack development solutions.
-                Passionate about troubleshooting complex technical issues, optimizing system performance, and creating innovative web applications.
+                {{about()?.bio}}
               </p>
 
               <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
@@ -55,11 +54,11 @@ import { ExportService } from '../../core/services/export.service';
               <div class="text-gray-600 dark:text-gray-400">Projects Completed</div>
             </div>
             <div class="text-center animate-slide-in-left" style="animation-delay: 0.1s;">
-              <div class="text-3xl font-bold text-purple-600 mb-2">{{stats().experience}}+</div>
+              <div class="text-3xl font-bold text-purple-600 mb-2">{{stats().workExperience}}+</div>
               <div class="text-gray-600 dark:text-gray-400">Years Experience</div>
             </div>
             <div class="text-center animate-slide-in-left" style="animation-delay: 0.2s;">
-              <div class="text-3xl font-bold text-indigo-600 mb-2">{{stats().certifications}}+</div>
+              <div class="text-3xl font-bold text-indigo-600 mb-2">{{stats().certificates}}+</div>
               <div class="text-gray-600 dark:text-gray-400">Certifications</div>
             </div>
             <div class="text-center animate-slide-in-left" style="animation-delay: 0.3s;">
@@ -203,37 +202,39 @@ import { ExportService } from '../../core/services/export.service';
   `]
 })
 export class HomeComponent implements OnInit {
-  private portfolioService = inject(PortfolioService);
+  private adminService = inject(AdminService);
   private notificationService = inject(NotificationService);
   private router = inject(Router);
   private exportService = inject(ExportService);
 
+  protected about = computed(() => this.adminService.getAbout()[0]);
+
   protected featuredProjects = computed(() =>
-    this.portfolioService.featuredProjects()
+    this.adminService.getProjects().filter(project => project.featured)
   );
 
   protected topSkills = computed(() => {
-    const skills = this.portfolioService.getSkills();
+    const skills = this.adminService.getSkills();
     return skills
       .sort((a, b) => b.proficiency - a.proficiency)
       .slice(0, 8);
   });
 
-  protected stats = signal({
-    projects: 10,
-    experience: 3,
-    certifications: 5,
-    skills: 12
-  });
+  protected stats = computed(() => this.adminService.getStats());
 
   ngOnInit() {
-    // Load initial data if needed
-    this.portfolioService.loadInitialData();
+    this.adminService.loadInitialData();
 
     // Show welcome notification
     setTimeout(() => {
       this.notificationService.success('Welcome to my portfolio! 🎉', 'Feel free to explore my projects and get in touch.');
     }, 1000);
+  }
+
+  // Add method to navigate to experience page
+  onViewExperience() {
+    this.router.navigate(['/experience']);
+    this.notificationService.info('Navigating to experience...', 'Check out my professional journey and education.');
   }
 
   onViewWork() {
@@ -242,25 +243,28 @@ export class HomeComponent implements OnInit {
   }
 
   onDownloadResume() {
+    const about = this.adminService.getAbout()[0];
+    const skills = this.adminService.getSkills();
+    const certificates = this.adminService.getCertificates();
+
     this.notificationService.success('Resume download started!', 'Your resume will be downloaded shortly.');
 
-    // Use the export service to generate and download resume
     this.exportService.exportResume({
       personalInfo: {
-        name: 'Bernard Zulu',
-        title: 'IT Support Specialist | Junior Network Technician | Full-Stack Developer',
-        summary: 'I specialize in providing comprehensive IT support, network administration, and full-stack development solutions. Passionate about troubleshooting complex technical issues, optimizing system performance, and creating innovative web applications.',
-        location: 'Lusaka, Zambia',
-        email: 'bernardzulu23@gmail.com',
-        phone: '+260 977 934 996',
-        website: 'https://bernardzulu.dev',
-        linkedin: 'https://linkedin.com/in/bernard-zulu-071977224',
-        github: 'https://github.com/bernardzulu23'
+        name: about?.name || '',
+        title: about?.title || '',
+        summary: about?.bio || '',
+        location: about?.location || '',
+        email: about?.email || '',
+        phone: about?.phone || '',
+        website: about?.websiteUrl || '',
+        linkedin: about?.linkedinUrl || '',
+        github: about?.githubUrl || ''
       },
-      experiences: [],
-      education: [],
-      skills: ['Angular', 'TypeScript', 'Node.js', 'Python', 'React', 'Vue.js', 'MongoDB', 'PostgreSQL'],
-      certifications: ['CompTIA A+', 'Network+', 'CCNA', 'AWS Certified Cloud Practitioner']
+      experiences: this.adminService.getWorkExperience(),
+      education: this.adminService.getEducation(),
+      skills: skills.map(skill => skill.name),
+      certifications: certificates.map(cert => cert.title)
     }, 'pdf');
 
     setTimeout(() => {
@@ -289,23 +293,26 @@ export class HomeComponent implements OnInit {
   }
 
   onViewResume() {
-    // Open resume in a new tab or modal
+    const about = this.adminService.getAbout()[0];
+    const skills = this.adminService.getSkills();
+    const certificates = this.adminService.getCertificates();
+
     this.exportService.exportResume({
       personalInfo: {
-        name: 'Bernard Zulu',
-        title: 'IT Support Specialist | Junior Network Technician | Full-Stack Developer',
-        summary: 'I specialize in providing comprehensive IT support, network administration, and full-stack development solutions. Passionate about troubleshooting complex technical issues, optimizing system performance, and creating innovative web applications.',
-        location: 'Lusaka, Zambia',
-        email: 'bernardzulu23@gmail.com',
-        phone: '+260 977 934 996',
-        website: 'https://bernardzulu.dev',
-        linkedin: 'https://linkedin.com/in/bernard-zulu-071977224',
-        github: 'https://github.com/bernardzulu23'
+        name: about?.name || '',
+        title: about?.title || '',
+        summary: about?.bio || '',
+        location: about?.location || '',
+        email: about?.email || '',
+        phone: about?.phone || '',
+        website: about?.websiteUrl || '',
+        linkedin: about?.linkedinUrl || '',
+        github: about?.githubUrl || ''
       },
-      experiences: [],
-      education: [],
-      skills: ['Angular', 'TypeScript', 'Node.js', 'Python', 'React', 'Vue.js', 'MongoDB', 'PostgreSQL'],
-      certifications: ['CompTIA A+', 'Network+', 'CCNA', 'AWS Certified Cloud Practitioner']
+      experiences: this.adminService.getWorkExperience(),
+      education: this.adminService.getEducation(),
+      skills: skills.map(skill => skill.name),
+      certifications: certificates.map(cert => cert.title)
     }, 'pdf');
     this.notificationService.info('Opening resume...', 'Resume will be displayed in a new tab.');
   }

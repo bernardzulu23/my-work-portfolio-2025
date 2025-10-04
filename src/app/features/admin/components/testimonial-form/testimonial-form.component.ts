@@ -1,8 +1,8 @@
+
 import { Component, Input, Output, EventEmitter, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { Testimonial, Recommendation } from '../../../testimonials/testimonials.component';
-
+import { Testimonial, Recommendation } from '../../../../core/types';
 @Component({
   selector: 'app-testimonial-form',
   standalone: true,

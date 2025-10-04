@@ -1,6 +1,6 @@
 import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ExperienceService } from './services/experience.service';
+import { AdminService } from '../../core/services/admin.service';
 
 
 export interface WorkExperience {
@@ -254,10 +254,10 @@ export interface Education {
   `]
 })
 export class ExperienceComponent implements OnInit {
-  private experienceService = inject(ExperienceService);
+  private adminService = inject(AdminService);
 
-  protected workExperience = computed(() => this.experienceService.getWorkExperience());
-  protected education = computed(() => this.experienceService.getEducation());
+  protected workExperience = computed(() => this.adminService.getWorkExperience());
+  protected education = computed(() => this.adminService.getEducation());
 
   protected totalExperience = computed(() => {
     const experiences = this.workExperience();
@@ -266,7 +266,7 @@ export class ExperienceComponent implements OnInit {
     const now = new Date();
     let totalMonths = 0;
 
-    experiences.forEach(exp => {
+    experiences.forEach((exp: any) => {
       const startDate = new Date(exp.startDate);
       const endDate = exp.current ? now : new Date(exp.endDate!);
       const months = (endDate.getFullYear() - startDate.getFullYear()) * 12 +
@@ -278,10 +278,10 @@ export class ExperienceComponent implements OnInit {
   });
 
   ngOnInit() {
-    this.experienceService.loadExperienceData();
+    this.adminService.loadInitialData();
   }
 
-  getDurationText(experience: WorkExperience): string {
+  getDurationText(experience: any): string {
     const startDate = new Date(experience.startDate).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short'
@@ -291,7 +291,7 @@ export class ExperienceComponent implements OnInit {
       return `${startDate} - Present`;
     }
 
-    const endDate = new Date(experience.endDate!).toLocaleDateString('en-US', {
+    const endDate = new Date(experience.endDate).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short'
     });
@@ -299,7 +299,7 @@ export class ExperienceComponent implements OnInit {
     return `${startDate} - ${endDate}`;
   }
 
-  getEducationDurationText(education: Education): string {
+  getEducationDurationText(education: any): string {
     const startDate = new Date(education.startDate).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short'
@@ -309,7 +309,7 @@ export class ExperienceComponent implements OnInit {
       return `${startDate} - Present`;
     }
 
-    const endDate = new Date(education.endDate!).toLocaleDateString('en-US', {
+    const endDate = new Date(education.endDate).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short'
     });
@@ -321,8 +321,8 @@ export class ExperienceComponent implements OnInit {
     const experiences = this.workExperience();
     const technologies = new Set<string>();
 
-    experiences.forEach(exp => {
-      exp.technologies.forEach(tech => technologies.add(tech));
+    experiences.forEach((exp: any) => {
+      exp.technologies.forEach((tech: any) => technologies.add(tech));
     });
 
     return technologies.size;
@@ -332,7 +332,7 @@ export class ExperienceComponent implements OnInit {
     const experiences = this.workExperience();
     let total = 0;
 
-    experiences.forEach(exp => {
+    experiences.forEach((exp: any) => {
       total += exp.achievements.length;
     });
 

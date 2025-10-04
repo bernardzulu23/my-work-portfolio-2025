@@ -319,6 +319,40 @@ export class AuthService {
     }
   }
 
+  // Set admin role for current user
+  async setAdminRole(): Promise<{ success: boolean; error?: string }> {
+    try {
+      const user = this._user();
+      if (!user) {
+        return { success: false, error: 'No user logged in' };
+      }
+
+      const { error } = await this.supabase
+        .from('profiles')
+        .update({ role: 'admin' })
+        .eq('id', user.id);
+
+      if (error) {
+        console.error('Error setting admin role:', error);
+        return { success: false, error: error.message };
+      }
+
+      // Update local user object
+      const updatedUser: AuthUser = {
+        ...user,
+        role: 'admin'
+      };
+
+      this._user.set(updatedUser);
+      this.userSubject.next(updatedUser);
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error setting admin role:', error);
+      return { success: false, error: 'An unexpected error occurred' };
+    }
+  }
+
   // Utility methods
   getUserEmail(): string | null {
     return this._user()?.email || null;
