@@ -21,6 +21,7 @@ This is a comprehensive Angular portfolio application with admin dashboard, feat
 ### ✅ Completed
 - [x] Project setup and architecture
 - [x] AdminService with signal-based data management
+- [x] AdminService certificates methods updated to use Supabase
 - [x] HomeComponent refactor (dynamic data)
 - [x] AboutComponent refactor (dynamic data + comprehensive testing)
 - [x] Playwright E2E testing setup

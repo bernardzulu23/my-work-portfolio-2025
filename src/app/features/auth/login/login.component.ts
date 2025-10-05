@@ -102,7 +102,7 @@ import { SanitizeHtmlPipe } from '../../../shared/pipes';
             <h3 class="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">Demo Credentials</h3>
             <div class="text-xs text-blue-700 dark:text-blue-300 space-y-1">
               <div><strong>Email:</strong> admin@demo.com</div>
-              <div><strong>Password:</strong> admin123</div>
+              <div><strong>Password:</strong> Admin123!</div>
             </div>
           </div>
         </form>

@@ -180,15 +180,17 @@ export class AdminService {
         errorMessage: (error as Error)?.message
       });
 
-      // Only fallback to mock data in development or if explicitly allowed
-      if (!environment.production) {
-        console.warn('Falling back to mock data in development mode');
-        this.loadMockData();
-      } else {
-        console.error('Production mode: Not falling back to mock data. Supabase connection failed.');
-        // In production, throw the error instead of using mock data
-        throw error;
-      }
+      // Set empty data instead of using mock data
+      console.warn('Supabase connection failed. Using empty data.');
+      this.setBlogPosts([]);
+      this.setSkills([]);
+      this.setWorkExperience([]);
+      this.setEducation([]);
+      this.setProjects([]);
+      this.setCertificates([]);
+      this.setAbout([]);
+      this.setTestimonials([]);
+      this.setRecommendations([]);
     }
   }
 
@@ -545,26 +547,56 @@ export class AdminService {
     return this.skillsSignal();
   }
 
-  addSkill(skill: Omit<Skill, 'id'>) {
-    const newSkill: Skill = {
-      ...skill,
-      id: this.generateId()
-    };
-    const skills = [...this.skillsSignal(), newSkill];
-    this.setSkills(skills);
-    return newSkill;
+  async addSkill(skill: Omit<Skill, 'id'>) {
+    try {
+      const supabaseSkill = {
+        ...skill,
+        years_of_experience: skill.yearsOfExperience
+      };
+      const newSkill = await this.supabaseService.addSkill(supabaseSkill);
+      const transformedSkill: Skill = {
+        ...newSkill,
+        yearsOfExperience: newSkill.years_of_experience || 0
+      };
+      const skills = [...this.skillsSignal(), transformedSkill];
+      this.setSkills(skills);
+      return transformedSkill;
+    } catch (error) {
+      console.error('Error adding skill:', error);
+      throw error;
+    }
   }
 
-  updateSkill(id: string, updates: Partial<Skill>) {
-    const skills = this.skillsSignal().map(skill =>
-      skill.id === id ? { ...skill, ...updates } : skill
-    );
-    this.setSkills(skills);
+  async updateSkill(id: string, updates: Partial<Skill>) {
+    try {
+      const supabaseUpdates = {
+        ...updates,
+        years_of_experience: updates.yearsOfExperience
+      };
+      const updatedSkill = await this.supabaseService.updateSkill(id, supabaseUpdates);
+      const transformedSkill: Skill = {
+        ...updatedSkill,
+        yearsOfExperience: updatedSkill.years_of_experience || 0
+      };
+      const skills = this.skillsSignal().map(skill =>
+        skill.id === id ? transformedSkill : skill
+      );
+      this.setSkills(skills);
+    } catch (error) {
+      console.error('Error updating skill:', error);
+      throw error;
+    }
   }
 
-  deleteSkill(id: string) {
-    const skills = this.skillsSignal().filter(skill => skill.id !== id);
-    this.setSkills(skills);
+  async deleteSkill(id: string) {
+    try {
+      await this.supabaseService.deleteSkill(id);
+      const skills = this.skillsSignal().filter(skill => skill.id !== id);
+      this.setSkills(skills);
+    } catch (error) {
+      console.error('Error deleting skill:', error);
+      throw error;
+    }
   }
 
   // Work Experience Management
@@ -626,26 +658,56 @@ export class AdminService {
     return this.projectsSignal();
   }
 
-  addProject(project: Omit<Project, 'id'>) {
-    const newProject: Project = {
-      ...project,
-      id: this.generateId()
-    };
-    const projects = [...this.projectsSignal(), newProject];
-    this.setProjects(projects);
-    return newProject;
+  async addProject(project: Omit<Project, 'id'>) {
+    try {
+      const supabaseProject = {
+        ...project,
+        image_url: project.imageUrl
+      };
+      const newProject = await this.supabaseService.addProject(supabaseProject);
+      const transformedProject: Project = {
+        ...newProject,
+        imageUrl: newProject.image_url || '/assets/projects/default.jpg'
+      };
+      const projects = [...this.projectsSignal(), transformedProject];
+      this.setProjects(projects);
+      return transformedProject;
+    } catch (error) {
+      console.error('Error adding project:', error);
+      throw error;
+    }
   }
 
-  updateProject(id: string, updates: Partial<Project>) {
-    const projects = this.projectsSignal().map(project =>
-      project.id === id ? { ...project, ...updates } : project
-    );
-    this.setProjects(projects);
+  async updateProject(id: string, updates: Partial<Project>) {
+    try {
+      const supabaseUpdates = {
+        ...updates,
+        image_url: updates.imageUrl
+      };
+      const updatedProject = await this.supabaseService.updateProject(id, supabaseUpdates);
+      const transformedProject: Project = {
+        ...updatedProject,
+        imageUrl: updatedProject.image_url || '/assets/projects/default.jpg'
+      };
+      const projects = this.projectsSignal().map(project =>
+        project.id === id ? transformedProject : project
+      );
+      this.setProjects(projects);
+    } catch (error) {
+      console.error('Error updating project:', error);
+      throw error;
+    }
   }
 
-  deleteProject(id: string) {
-    const projects = this.projectsSignal().filter(project => project.id !== id);
-    this.setProjects(projects);
+  async deleteProject(id: string) {
+    try {
+      await this.supabaseService.deleteProject(id);
+      const projects = this.projectsSignal().filter(project => project.id !== id);
+      this.setProjects(projects);
+    } catch (error) {
+      console.error('Error deleting project:', error);
+      throw error;
+    }
   }
 
   // Certificates Management
@@ -653,26 +715,72 @@ export class AdminService {
     return this.certificatesSignal();
   }
 
-  addCertificate(certificate: Omit<Certificate, 'id'>) {
-    const newCertificate: Certificate = {
-      ...certificate,
-      id: this.generateId()
-    };
-    const certificates = [...this.certificatesSignal(), newCertificate];
-    this.setCertificates(certificates);
-    return newCertificate;
+  async addCertificate(certificate: Omit<Certificate, 'id'>) {
+    try {
+      const supabaseCertificate = {
+        ...certificate,
+        issue_date: certificate.issueDate.toISOString(),
+        expiry_date: certificate.expiryDate?.toISOString(),
+        pdf_url: certificate.pdfUrl,
+        thumbnail_url: certificate.thumbnailUrl,
+        verification_badge: certificate.verificationBadge
+      };
+      const newCertificate = await this.supabaseService.addCertificate(supabaseCertificate);
+      const transformedCertificate: Certificate = {
+        ...newCertificate,
+        issueDate: new Date(newCertificate.issue_date),
+        expiryDate: newCertificate.expiry_date ? new Date(newCertificate.expiry_date) : undefined,
+        pdfUrl: newCertificate.pdf_url || '',
+        thumbnailUrl: newCertificate.thumbnail_url || '',
+        verificationBadge: newCertificate.verification_badge || false
+      };
+      const certificates = [...this.certificatesSignal(), transformedCertificate];
+      this.setCertificates(certificates);
+      return transformedCertificate;
+    } catch (error) {
+      console.error('Error adding certificate:', error);
+      throw error;
+    }
   }
 
-  updateCertificate(id: string, updates: Partial<Certificate>) {
-    const certificates = this.certificatesSignal().map(cert =>
-      cert.id === id ? { ...cert, ...updates } : cert
-    );
-    this.setCertificates(certificates);
+  async updateCertificate(id: string, updates: Partial<Certificate>) {
+    try {
+      const supabaseUpdates = {
+        ...updates,
+        issue_date: updates.issueDate?.toISOString(),
+        expiry_date: updates.expiryDate?.toISOString(),
+        pdf_url: updates.pdfUrl,
+        thumbnail_url: updates.thumbnailUrl,
+        verification_badge: updates.verificationBadge
+      };
+      const updatedCertificate = await this.supabaseService.updateCertificate(id, supabaseUpdates);
+      const transformedCertificate: Certificate = {
+        ...updatedCertificate,
+        issueDate: new Date(updatedCertificate.issue_date),
+        expiryDate: updatedCertificate.expiry_date ? new Date(updatedCertificate.expiry_date) : undefined,
+        pdfUrl: updatedCertificate.pdf_url || '',
+        thumbnailUrl: updatedCertificate.thumbnail_url || '',
+        verificationBadge: updatedCertificate.verification_badge || false
+      };
+      const certificates = this.certificatesSignal().map(cert =>
+        cert.id === id ? transformedCertificate : cert
+      );
+      this.setCertificates(certificates);
+    } catch (error) {
+      console.error('Error updating certificate:', error);
+      throw error;
+    }
   }
 
-  deleteCertificate(id: string) {
-    const certificates = this.certificatesSignal().filter(cert => cert.id !== id);
-    this.setCertificates(certificates);
+  async deleteCertificate(id: string) {
+    try {
+      await this.supabaseService.deleteCertificate(id);
+      const certificates = this.certificatesSignal().filter(cert => cert.id !== id);
+      this.setCertificates(certificates);
+    } catch (error) {
+      console.error('Error deleting certificate:', error);
+      throw error;
+    }
   }
 
   // About Management
