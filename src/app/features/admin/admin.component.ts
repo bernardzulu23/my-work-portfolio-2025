@@ -1,7 +1,6 @@
-import { Component, OnInit, signal, computed, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { AdminService, BlogPost, Skill, WorkExperience, Project, Certificate, About } from '../../core/services/admin.service';
+import type { Testimonial } from '../../core/types';
 import { AuthService } from '../../core/services/auth.service';
 import { ModalComponent } from '../../shared/components/modal/modal.component';
 import { AboutFormComponent } from './components/about-form/about-form.component';
@@ -10,15 +9,20 @@ import { SkillFormComponent } from './components/skill-form/skill-form.component
 import { ExperienceFormComponent } from './components/experience-form/experience-form.component';
 import { ProjectFormComponent } from './components/project-form/project-form.component';
 import { CertificateFormComponent } from './components/certificate-form/certificate-form.component';
+import { TestimonialFormComponent } from './components/testimonial-form/testimonial-form.component';
 import { NotificationService } from '../../shared/services/notification.service';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
+import { Component, OnInit } from '@angular/core';
+import { CommonModule, DatePipe } from '@angular/common';
 import { ConfirmationDialogComponent } from '../../shared/components/confirmation-dialog/confirmation-dialog.component';
+import { signal, computed, inject } from '@angular/core';
 
 @Component({
   selector: 'app-admin',
   standalone: true,
   imports: [
     CommonModule,
+    DatePipe,
     ModalComponent,
     AboutFormComponent,
     BlogFormComponent,
@@ -26,6 +30,7 @@ import { ConfirmationDialogComponent } from '../../shared/components/confirmatio
     ExperienceFormComponent,
     ProjectFormComponent,
     CertificateFormComponent,
+    TestimonialFormComponent,
     LoadingSpinnerComponent
   ],
   template: `
@@ -132,6 +137,12 @@ import { ConfirmationDialogComponent } from '../../shared/components/confirmatio
               [class]="getTabClass('certificates')"
               class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
               Certificates
+            </button>
+            <button
+              (click)="activeTab.set('testimonials')"
+              [class]="getTabClass('testimonials')"
+              class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+              Testimonials
             </button>
           </nav>
         </div>
@@ -375,6 +386,58 @@ import { ConfirmationDialogComponent } from '../../shared/components/confirmatio
               </div>
             </div>
           </div>
+
+          <!-- Testimonials Tab -->
+          <div *ngIf="activeTab() === 'testimonials'" class="space-y-4">
+            <div class="flex justify-between items-center">
+              <h2 class="text-2xl font-bold">Testimonials</h2>
+              <button
+                (click)="openTestimonialModal()"
+                class="bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded-md transition-colors">
+                Add Testimonial
+              </button>
+            </div>
+            <div class="grid gap-4">
+              <div *ngFor="let testimonial of testimonials()"
+                    class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                <div class="flex justify-between items-start">
+                  <div class="flex-1">
+                    <div class="flex items-center space-x-3 mb-2">
+                      <div *ngIf="testimonial.avatar" class="w-10 h-10 rounded-full overflow-hidden">
+                        <img [src]="testimonial.avatar" [alt]="testimonial.author" class="w-full h-full object-cover">
+                      </div>
+                      <div>
+                        <h3 class="text-lg font-semibold">{{testimonial.author}}</h3>
+                        <p class="text-gray-600 dark:text-gray-400">{{testimonial.position}} at {{testimonial.company}}</p>
+                      </div>
+                    </div>
+                    <p class="text-gray-700 dark:text-gray-300 mb-2">{{testimonial.content}}</p>
+                    <div class="flex items-center space-x-4 mt-2">
+                      <span *ngIf="'rating' in testimonial" class="text-sm">Rating: {{testimonial.rating}}/5 ⭐</span>
+                      <span class="text-sm text-gray-500">{{testimonial.date | date}}</span>
+                      <span *ngIf="testimonial.verified" class="text-green-600 text-sm">✓ Verified</span>
+                      <span *ngIf="'featured' in testimonial && testimonial.featured" class="text-yellow-600 text-sm">★ Featured</span>
+                    </div>
+                    <div *ngIf="testimonial.skills && testimonial.skills.length > 0" class="mt-2">
+                      <span class="text-sm text-gray-500">Skills: {{testimonial.skills.join(', ')}}</span>
+                    </div>
+                  </div>
+                  <div class="flex space-x-2">
+                    <button
+                      (click)="editTestimonial(testimonial)"
+                      class="text-blue-600 hover:text-blue-800 px-3 py-1 rounded">
+                      Edit
+                    </button>
+                    <button
+                      (click)="deleteTestimonial(testimonial.id)"
+                      class="text-red-600 hover:text-red-800 px-3 py-1 rounded">
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -447,6 +510,20 @@ import { ConfirmationDialogComponent } from '../../shared/components/confirmatio
           (onCancel)="closeCertificateModal()">
         </app-certificate-form>
       </app-modal>
+
+      <!-- Testimonial Modal -->
+      <app-modal
+        [isOpen]="testimonialModalOpen()"
+        title="Testimonial"
+        (onClose)="closeTestimonialModal()"
+        (onConfirm)="handleTestimonialSubmit()">
+        <app-testimonial-form
+          [testimonial]="selectedTestimonial()"
+          [isEditing]="isEditingTestimonial()"
+          (onSubmit)="handleTestimonialSubmit()"
+          (onCancel)="closeTestimonialModal()">
+        </app-testimonial-form>
+      </app-modal>
     </div>
   `,
 
@@ -480,7 +557,7 @@ export class AdminComponent implements OnInit {
   ) {}
 
   // Active tab state
-  activeTab = signal<'about' | 'blog' | 'skills' | 'experience' | 'projects' | 'certificates'>('about');
+  activeTab = signal<'about' | 'blog' | 'skills' | 'experience' | 'projects' | 'certificates' | 'testimonials'>('about');
 
   // Modal states
   aboutModalOpen = signal(false);
@@ -489,6 +566,7 @@ export class AdminComponent implements OnInit {
   experienceModalOpen = signal(false);
   projectModalOpen = signal(false);
   certificateModalOpen = signal(false);
+  testimonialModalOpen = signal(false);
 
   // Selected items for editing
   selectedAbout = signal<About | null>(null);
@@ -532,6 +610,7 @@ export class AdminComponent implements OnInit {
     this.workExperience.set(this.adminService.getWorkExperience());
     this.projects.set(this.adminService.getProjects());
     this.certificates.set(this.adminService.getCertificates());
+    this.testimonials.set(this.adminService.getTestimonials());
   }
 
   // Tab management
@@ -709,4 +788,41 @@ export class AdminComponent implements OnInit {
       this.loadData();
     }
   }
+
+  // Testimonial management
+  testimonials = signal<Testimonial[]>([]);
+
+  openTestimonialModal() {
+    this.selectedTestimonial.set(null);
+    this.isEditingTestimonial.set(false);
+    this.testimonialModalOpen.set(true);
+  }
+
+  editTestimonial(testimonial: Testimonial) {
+    this.selectedTestimonial.set(testimonial);
+    this.isEditingTestimonial.set(true);
+    this.testimonialModalOpen.set(true);
+  }
+
+  closeTestimonialModal() {
+    this.testimonialModalOpen.set(false);
+    this.selectedTestimonial.set(null);
+    this.isEditingTestimonial.set(false);
+  }
+
+  handleTestimonialSubmit() {
+    this.closeTestimonialModal();
+    this.loadData();
+  }
+
+  deleteTestimonial(id: string) {
+    if (confirm('Are you sure you want to delete this testimonial?')) {
+      this.adminService.deleteTestimonial(id);
+      this.loadData();
+    }
+  }
+
+  // Additional signals for testimonials
+  selectedTestimonial = signal<Testimonial | null>(null);
+  isEditingTestimonial = signal(false);
 }
