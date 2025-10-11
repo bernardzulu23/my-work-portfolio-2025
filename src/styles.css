@@ -2,8 +2,8 @@
    Professional Portfolio Styles
    =================================== */
 
-/* Import Fonts */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+/* Import Fonts - Temporarily disabled due to build issues */
+/* @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap'); */
 
 /* Tailwind CSS */
 @tailwind base;

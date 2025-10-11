@@ -149,6 +149,96 @@ import { signal, computed, inject } from '@angular/core';
 
         <!-- Tab Content -->
         <div class="p-6">
+          <!-- About Tab -->
+          <div *ngIf="activeTab() === 'about'" class="space-y-4">
+            <div class="flex justify-between items-center">
+              <h2 class="text-2xl font-bold">About Information</h2>
+              <button
+                (click)="openAboutModal()"
+                class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors">
+                {{about() ? 'Edit About' : 'Add About'}}
+              </button>
+            </div>
+            <div *ngIf="about()" class="border border-gray-200 dark:border-gray-700 rounded-lg p-6">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h3 class="text-lg font-semibold mb-2">{{about()!.name}}</h3>
+                  <p class="text-blue-600 mb-1">{{about()!.title}}</p>
+                  <p class="text-gray-600 dark:text-gray-400 mb-2">{{about()!.location}}</p>
+                  <p class="text-sm text-gray-500 mb-4">{{about()!.tagline}}</p>
+                  <div class="space-y-2">
+                    <p><strong>Email:</strong> {{about()!.email}}</p>
+                    <p *ngIf="about()!.phone"><strong>Phone:</strong> {{about()!.phone}}</p>
+                    <p><strong>Availability:</strong>
+                      <span [class]="about()!.availability === 'available' ? 'text-green-600' : 'text-red-600'">
+                        {{about()!.availability}}
+                      </span>
+                    </p>
+                  </div>
+                </div>
+                <div>
+                  <h4 class="font-semibold mb-2">Bio</h4>
+                  <p class="text-gray-700 dark:text-gray-300 mb-4">{{about()!.bio}}</p>
+                  <div *ngIf="about()!.values && about()!.values.length > 0" class="mb-4">
+                    <h4 class="font-semibold mb-2">Core Values</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div *ngFor="let value of about()!.values" class="text-sm">
+                        <span class="font-medium">{{value.title}}:</span> {{value.description}}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div *ngIf="about()!.experience && about()!.experience.length > 0" class="mt-6">
+                <h4 class="font-semibold mb-4">Experience Timeline</h4>
+                <div class="space-y-3">
+                  <div *ngFor="let exp of about()!.experience" class="border-l-4 border-blue-500 pl-4">
+                    <div class="flex justify-between items-start">
+                      <div>
+                        <h5 class="font-medium">{{exp.title}} at {{exp.company}}</h5>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">{{exp.year}}</p>
+                        <p class="text-sm mt-1">{{exp.description}}</p>
+                        <p *ngIf="exp.technologies" class="text-sm text-gray-500 mt-1">
+                          Technologies: {{exp.technologies.join(', ')}}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div *ngIf="!about()" class="text-center py-12">
+              <div class="text-gray-400 mb-4">
+                <svg class="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                </svg>
+              </div>
+              <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">No About Information</h3>
+              <p class="text-gray-600 dark:text-gray-400 mb-4">Add your personal information to showcase your profile.</p>
+              <button
+                (click)="openAboutModal()"
+                class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md transition-colors">
+                Add About Information
+              </button>
+            </div>
+            <ng-template #noAboutTemplate>
+              <div class="text-center py-12">
+                <div class="text-gray-400 mb-4">
+                  <svg class="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                  </svg>
+                </div>
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">No About Information</h3>
+                <p class="text-gray-600 dark:text-gray-400 mb-4">Add your personal information to showcase your profile.</p>
+                <button
+                  (click)="openAboutModal()"
+                  class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md transition-colors">
+                  Add About Information
+                </button>
+              </div>
+            </ng-template>
+          </div>
+
           <!-- Blog Posts Tab -->
           <div *ngIf="activeTab() === 'blog'" class="space-y-4">
             <div class="flex justify-between items-center">
@@ -511,6 +601,20 @@ import { signal, computed, inject } from '@angular/core';
         </app-certificate-form>
       </app-modal>
 
+      <!-- About Modal -->
+      <app-modal
+        [isOpen]="aboutModalOpen()"
+        title="About Information"
+        (onClose)="closeAboutModal()"
+        (onConfirm)="handleAboutSubmit()">
+        <app-about-form
+          [about]="selectedAbout()"
+          [isEditing]="isEditingAbout()"
+          (onSubmit)="handleAboutSubmit()"
+          (onCancel)="closeAboutModal()">
+        </app-about-form>
+      </app-modal>
+
       <!-- Testimonial Modal -->
       <app-modal
         [isOpen]="testimonialModalOpen()"
@@ -631,6 +735,30 @@ export class AdminComponent implements OnInit {
     } finally {
       this.isLoggingOut.set(false);
     }
+  }
+
+  // About management
+  openAboutModal() {
+    this.selectedAbout.set(null);
+    this.isEditingAbout.set(false);
+    this.aboutModalOpen.set(true);
+  }
+
+  editAbout(about: About) {
+    this.selectedAbout.set(about);
+    this.isEditingAbout.set(true);
+    this.aboutModalOpen.set(true);
+  }
+
+  closeAboutModal() {
+    this.aboutModalOpen.set(false);
+    this.selectedAbout.set(null);
+    this.isEditingAbout.set(false);
+  }
+
+  handleAboutSubmit() {
+    this.closeAboutModal();
+    this.loadData();
   }
 
   // Blog management

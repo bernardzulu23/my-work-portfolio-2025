@@ -1,12 +1,11 @@
 import { Component, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
+import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { AuthService } from '../../../core/services/auth.service';
 import { Router } from '@angular/router';
-import { AuthService, LoginCredentials } from '../../../core/services';
 import { NotificationService } from '../../../shared/services/notification.service';
-import { SecurityService, RateLimitStatus } from '../../../core/services';
+import { SecurityService } from '../../../core/services/security.service';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
-import { SanitizeHtmlPipe } from '../../../shared/pipes';
 
 @Component({
   selector: 'app-login',
@@ -33,6 +32,8 @@ import { SanitizeHtmlPipe } from '../../../shared/pipes';
           </p>
         </div>
 
+
+
         <form class="mt-8 space-y-6" [formGroup]="loginForm" (ngSubmit)="onSubmit()">
           <div class="rounded-md shadow-sm -space-y-px">
             <div>
@@ -46,9 +47,12 @@ import { SanitizeHtmlPipe } from '../../../shared/pipes';
                 class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-800 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
                 placeholder="Email address"
                 [class.border-red-300]="isFieldInvalid('email')"
-                [class.focus:border-red-500]="isFieldInvalid('email')"
-                [class.focus:ring-red-500]="isFieldInvalid('email')"
               >
+              <div *ngIf="isFieldInvalid('email')" class="text-xs text-red-600 mt-1 px-3">
+                <span *ngIf="loginForm.get('email')?.errors?.['required']">Email required</span>
+                <span *ngIf="loginForm.get('email')?.errors?.['invalidEmail']">Invalid email</span>
+                <span *ngIf="loginForm.get('email')?.errors?.['xssAttempt']">Invalid characters</span>
+              </div>
             </div>
             <div>
               <label for="password" class="sr-only">Password</label>
@@ -61,9 +65,11 @@ import { SanitizeHtmlPipe } from '../../../shared/pipes';
                 class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-800 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
                 placeholder="Password"
                 [class.border-red-300]="isFieldInvalid('password')"
-                [class.focus:border-red-500]="isFieldInvalid('password')"
-                [class.focus:ring-red-500]="isFieldInvalid('password')"
               >
+              <div *ngIf="isFieldInvalid('password')" class="text-xs text-red-600 mt-1 px-3">
+                <span *ngIf="loginForm.get('password')?.errors?.['required']">Password required</span>
+                <span *ngIf="loginForm.get('password')?.errors?.['xssAttempt']">Invalid characters</span>
+              </div>
             </div>
           </div>
 
@@ -81,7 +87,6 @@ import { SanitizeHtmlPipe } from '../../../shared/pipes';
             </div>
           </div>
 
-          <!-- Submit Button -->
           <div>
             <button
               type="submit"
@@ -96,22 +101,28 @@ import { SanitizeHtmlPipe } from '../../../shared/pipes';
               </span>
             </button>
           </div>
-
-          <!-- Demo Credentials -->
-          <div class="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-md">
-            <h3 class="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">Demo Credentials</h3>
-            <div class="text-xs text-blue-700 dark:text-blue-300 space-y-1">
-              <div><strong>Email:</strong> admin@demo.com</div>
-              <div><strong>Password:</strong> Admin123!</div>
-            </div>
-          </div>
         </form>
       </div>
     </div>
   `,
   styles: [`
     .form-field-error {
-      @apply border-red-300 focus:border-red-500 focus:ring-red-500;
+      border-color: #fca5a5;
+    }
+    
+    button {
+      pointer-events: auto !important;
+      position: relative;
+    }
+    
+    form {
+      position: relative;
+      z-index: 10;
+    }
+    
+    input {
+      position: relative;
+      z-index: 10;
     }
   `]
 })
@@ -125,7 +136,8 @@ export class LoginComponent {
   loginForm: FormGroup;
   isLoading = signal(false);
   loginError = signal<string | null>(null);
-  rateLimitStatus = signal<RateLimitStatus | null>(null);
+  failedAttempts = signal(0);
+  lockoutTime = signal<number | null>(null);
 
   constructor() {
     this.loginForm = this.fb.group({
@@ -141,9 +153,6 @@ export class LoginComponent {
         this.router.navigate(['/admin-setup']);
       }
     }
-
-    // Check rate limit status on component init
-    this.checkRateLimitStatus();
   }
 
   isFieldInvalid(fieldName: string): boolean {
@@ -152,6 +161,13 @@ export class LoginComponent {
   }
 
   async onSubmit() {
+    // Check if locked out
+    if (this.lockoutTime() && Date.now() < this.lockoutTime()!) {
+      const remainingSeconds = Math.ceil((this.lockoutTime()! - Date.now()) / 1000);
+      this.loginError.set(`Too many failed attempts. Please try again in ${remainingSeconds} seconds.`);
+      return;
+    }
+
     if (this.loginForm.invalid) {
       this.markFormGroupTouched();
       return;
@@ -167,18 +183,34 @@ export class LoginComponent {
 
       if (result.success) {
         this.notificationService.success('Success', 'Successfully logged in!');
-        // Check if user has admin role, if not redirect to admin setup
+
+        // Reset failed attempts on success
+        this.failedAttempts.set(0);
+        this.lockoutTime.set(null);
+
         if (this.authService.isAdmin()) {
           this.router.navigate(['/admin']);
         } else {
           this.router.navigate(['/admin-setup']);
         }
       } else {
-        this.loginError.set(result.error || 'Login failed');
+        // Use generic error message for security
+        this.failedAttempts.set(this.failedAttempts() + 1);
+
+        // Lock out after 5 failed attempts
+        if (this.failedAttempts() >= 5) {
+          this.lockoutTime.set(Date.now() + 60000); // 1 minute lockout
+          this.loginError.set('Too many failed attempts. Please try again in 60 seconds.');
+        } else {
+          this.loginError.set('Invalid email or password. Please try again.');
+        }
+
+        // Log specific error for debugging (server-side logging is better)
+        console.error('Login failed:', result.error);
       }
     } catch (error) {
       console.error('Login error:', error);
-      this.loginError.set('An unexpected error occurred');
+      this.loginError.set('Unable to sign in. Please try again later.');
     } finally {
       this.isLoading.set(false);
     }
@@ -195,7 +227,6 @@ export class LoginComponent {
     const email = control.value;
     if (!email) return null;
 
-    // Sanitize input
     const sanitizedEmail = this.securityService.sanitizeInput(email);
 
     if (sanitizedEmail !== email) {
@@ -213,41 +244,13 @@ export class LoginComponent {
     const password = control.value;
     if (!password) return null;
 
-    // Sanitize input
     const sanitizedPassword = this.securityService.sanitizeInput(password);
 
     if (sanitizedPassword !== password) {
       return { xssAttempt: true };
     }
 
-    const validation = this.securityService.validatePasswordStrength(password);
-    if (!validation.valid) {
-      return { weakPassword: { errors: validation.errors } };
-    }
-
+    // No password strength validation for login
     return null;
-  }
-
-  checkRateLimitStatus() {
-    // Get client IP (in a real app, this would come from the server)
-    const clientIP = this.getClientIP();
-    const status = this.securityService.getRateLimitStatus(clientIP);
-    this.rateLimitStatus.set(status);
-
-    if (status.isBlocked) {
-      this.loginError.set(`Too many failed login attempts. Try again after ${this.formatTime(status.blockedUntil!)}`);
-    }
-  }
-
-  private getClientIP(): string {
-    // In a real application, this would be provided by the server
-    // For demo purposes, we'll use a hash of the user agent
-    return btoa(navigator.userAgent).substring(0, 16);
-  }
-
-  
-  private formatTime(date: Date): string {
-    const diff = Math.ceil((date.getTime() - Date.now()) / 1000 / 60);
-    return `${diff} minutes`;
   }
 }

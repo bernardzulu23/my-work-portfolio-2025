@@ -18,7 +18,10 @@
           "builder": "@angular/build:application",
           "options": {
             "outputPath": "dist/angular-portfolio-2025",
-            "index": "src/index.html",
+            "index": {
+              "input": "src/index.html",
+              "inlineFonts": false
+            },
             "browser": "src/main.ts",
             "polyfills": [
               "zone.js"
