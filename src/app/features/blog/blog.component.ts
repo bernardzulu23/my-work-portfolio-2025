@@ -1,12 +1,13 @@
-import { Component, inject, computed, OnInit } from '@angular/core';
+import { Component, inject, computed, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AdminService } from '../../core/services/admin.service';
 import { SanitizeHtmlPipe } from '../../shared/pipes';
+import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
 
 @Component({
   selector: 'app-blog',
   standalone: true,
-  imports: [CommonModule, SanitizeHtmlPipe],
+  imports: [CommonModule, SanitizeHtmlPipe, LoadingSpinnerComponent],
   template: `
     <div class="container mx-auto px-4 py-20">
       <div class="text-center mb-16">
@@ -16,7 +17,14 @@ import { SanitizeHtmlPipe } from '../../shared/pipes';
         </p>
       </div>
 
-      <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8" *ngIf="publishedPosts().length > 0; else noPostsTemplate">
+      <div *ngIf="isLoading(); else contentTemplate">
+        <div class="flex justify-center py-20">
+          <app-loading-spinner></app-loading-spinner>
+        </div>
+      </div>
+
+      <ng-template #contentTemplate>
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8" *ngIf="publishedPosts().length > 0; else noPostsTemplate">
         <article *ngFor="let post of publishedPosts(); let i = index"
                  class="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 animate-slide-up"
                  [style.animation-delay]="i * 0.1 + 's'">
@@ -120,11 +128,17 @@ import { SanitizeHtmlPipe } from '../../shared/pipes';
 export class BlogComponent implements OnInit {
   private adminService = inject(AdminService);
 
+  protected isLoading = signal(true);
+
   protected publishedPosts = computed(() =>
     this.adminService.getBlogPosts().filter(post => post.status === 'published')
   );
 
-  ngOnInit() {
-    this.adminService.loadInitialData();
+  async ngOnInit() {
+    try {
+      await this.adminService.loadInitialData();
+    } finally {
+      this.isLoading.set(false);
+    }
   }
 }

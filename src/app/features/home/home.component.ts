@@ -4,11 +4,12 @@ import { Router } from '@angular/router';
 import { AdminService } from '../../core/services/admin.service';
 import { NotificationService } from '../../shared/services/notification.service';
 import { ExportService } from '../../core/services/export.service';
+import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
 
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, LoadingSpinnerComponent],
   template: `
     <div class="min-h-screen">
       <!-- Hero Section -->
@@ -45,8 +46,15 @@ import { ExportService } from '../../core/services/export.service';
         <div class="absolute bottom-20 left-1/4 w-12 h-12 bg-indigo-400 rounded-full opacity-20 animate-bounce-slow" style="animation-delay: 2s;"></div>
       </section>
 
-      <!-- Quick Stats Section -->
-      <section class="py-16 bg-white dark:bg-gray-800">
+      <div *ngIf="isLoading(); else contentTemplate">
+        <div class="flex justify-center py-20">
+          <app-loading-spinner></app-loading-spinner>
+        </div>
+      </div>
+
+      <ng-template #contentTemplate>
+        <!-- Quick Stats Section -->
+        <section class="py-16 bg-white dark:bg-gray-800">
         <div class="container mx-auto px-4">
           <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
             <div class="text-center animate-slide-in-left">
@@ -177,6 +185,7 @@ import { ExportService } from '../../core/services/export.service';
           </div>
         </div>
       </section>
+      </ng-template>
     </div>
   `,
   styles: [`
@@ -207,6 +216,8 @@ export class HomeComponent implements OnInit {
   private router = inject(Router);
   private exportService = inject(ExportService);
 
+  protected isLoading = signal(true);
+
   protected about = computed(() => this.adminService.getAbout()[0]);
 
   protected featuredProjects = computed(() =>
@@ -222,8 +233,12 @@ export class HomeComponent implements OnInit {
 
   protected stats = computed(() => this.adminService.getStats());
 
-  ngOnInit() {
-    this.adminService.loadInitialData();
+  async ngOnInit() {
+    try {
+      await this.adminService.loadInitialData();
+    } finally {
+      this.isLoading.set(false);
+    }
 
     // Show welcome notification
     setTimeout(() => {
