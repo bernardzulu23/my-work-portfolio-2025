@@ -25,49 +25,49 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
 
       <ng-template #contentTemplate>
         <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8" *ngIf="publishedPosts().length > 0; else noPostsTemplate">
-        <article *ngFor="let post of publishedPosts(); let i = index"
-                 class="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 animate-slide-up"
-                 [style.animation-delay]="i * 0.1 + 's'">
-          <!-- Featured Image -->
-          <div *ngIf="post.imageUrl" class="h-48 bg-gradient-to-br from-blue-400 to-purple-600 relative overflow-hidden">
-            <img [src]="post.imageUrl" [alt]="post.title"
-                 class="w-full h-full object-cover">
-            <div class="absolute top-4 right-4">
-              <span class="px-3 py-1 bg-white/20 backdrop-blur-sm text-white text-sm rounded-full">
-                {{post.category}}
-              </span>
-            </div>
-          </div>
-
-          <div class="p-6">
-            <h3 class="text-xl font-bold mb-2 text-gray-900 dark:text-white">{{post.title}}</h3>
-            <p class="text-gray-600 dark:text-gray-400 mb-4 line-clamp-3">{{post.excerpt}}</p>
-
-            <!-- Tags -->
-            <div class="mb-4" *ngIf="post.tags && post.tags.length > 0">
-              <div class="flex flex-wrap gap-2">
-                <span *ngFor="let tag of post.tags.slice(0, 3)"
-                      class="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs rounded">
-                  {{tag}}
-                </span>
-                <span *ngIf="post.tags.length > 3"
-                      class="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs rounded">
-                  +{{post.tags.length - 3}} more
+          <article *ngFor="let post of publishedPosts(); let i = index"
+                   class="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 animate-slide-up"
+                   [style.animation-delay]="i * 0.1 + 's'">
+            <!-- Featured Image -->
+            <div *ngIf="post.imageUrl" class="h-48 bg-gradient-to-br from-blue-400 to-purple-600 relative overflow-hidden">
+              <img [src]="post.imageUrl" [alt]="post.title"
+                   class="w-full h-full object-cover">
+              <div class="absolute top-4 right-4">
+                <span class="px-3 py-1 bg-white/20 backdrop-blur-sm text-white text-sm rounded-full">
+                  {{post.category}}
                 </span>
               </div>
             </div>
 
-            <div class="flex justify-between items-center">
-              <div class="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
-                <span>{{post.publishDate | date:'MMM dd, yyyy'}}</span>
-                <span>{{post.readTime}} min read</span>
+            <div class="p-6">
+              <h3 class="text-xl font-bold mb-2 text-gray-900 dark:text-white">{{post.title}}</h3>
+              <p class="text-gray-600 dark:text-gray-400 mb-4 line-clamp-3">{{post.excerpt}}</p>
+
+              <!-- Tags -->
+              <div class="mb-4" *ngIf="post.tags && post.tags.length > 0">
+                <div class="flex flex-wrap gap-2">
+                  <span *ngFor="let tag of post.tags.slice(0, 3)"
+                        class="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs rounded">
+                    {{tag}}
+                  </span>
+                  <span *ngIf="post.tags.length > 3"
+                        class="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs rounded">
+                    +{{post.tags.length - 3}} more
+                  </span>
+                </div>
               </div>
-              <button class="text-blue-600 hover:text-blue-700 font-medium transition-colors">
-                Read More →
-              </button>
+
+              <div class="flex justify-between items-center">
+                <div class="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
+                  <span>{{post.publishDate | date:'MMM dd, yyyy'}}</span>
+                  <span>{{post.readTime}} min read</span>
+                </div>
+                <button class="text-blue-600 hover:text-blue-700 font-medium transition-colors">
+                  Read More →
+                </button>
+              </div>
             </div>
-          </div>
-        </article>
+          </article>
         </div>
       </ng-template>
 
