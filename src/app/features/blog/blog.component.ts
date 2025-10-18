@@ -1,3 +1,6 @@
+// Blog component - Updated 2025
+
+
 import { Component, inject, computed, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AdminService } from '../../core/services/admin.service';
