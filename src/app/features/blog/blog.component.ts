@@ -69,6 +69,7 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
           </div>
         </article>
         </div>
+      </ng-template>
 
       <ng-template #noPostsTemplate>
         <div class="text-center py-20">
