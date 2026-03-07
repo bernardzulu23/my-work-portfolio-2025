@@ -69,10 +69,10 @@ export class SearchService {
 
   // Individual search methods
   private searchSkills(query: string, filters: SearchFilters): Array<Omit<SearchResult, 'type'>> {
-    const skills = this.portfolioService.getSkills();
+    const skills = this.portfolioService.getSkills() || [];
     const results: Array<Omit<SearchResult, 'type'>> = [];
 
-    skills.forEach(skill => {
+    skills.forEach((skill: Skill) => {
       const relevanceScore = this.calculateRelevanceScore(query, [
         skill.name,
         skill.category,
@@ -92,10 +92,10 @@ export class SearchService {
   }
 
   private searchCertificates(query: string, filters: SearchFilters): Array<Omit<SearchResult, 'type'>> {
-    const certificates = this.portfolioService.getCertificates();
+    const certificates = this.portfolioService.getCertificates() || [];
     const results: Array<Omit<SearchResult, 'type'>> = [];
 
-    certificates.forEach(cert => {
+    certificates.forEach((cert: Certificate) => {
       const relevanceScore = this.calculateRelevanceScore(query, [
         cert.title,
         cert.issuer,
@@ -116,10 +116,10 @@ export class SearchService {
   }
 
   private searchProjects(query: string, filters: SearchFilters): Array<Omit<SearchResult, 'type'>> {
-    const projects = this.portfolioService.getProjects();
+    const projects = this.portfolioService.getProjects() || [];
     const results: Array<Omit<SearchResult, 'type'>> = [];
 
-    projects.forEach(project => {
+    projects.forEach((project: Project) => {
       const relevanceScore = this.calculateRelevanceScore(query, [
         project.title,
         project.description,
@@ -139,10 +139,10 @@ export class SearchService {
   }
 
   private searchBlogPosts(query: string, filters: SearchFilters): Array<Omit<SearchResult, 'type'>> {
-    const posts = this.portfolioService.getBlogPosts();
+    const posts = this.portfolioService.getBlogPosts() || [];
     const results: Array<Omit<SearchResult, 'type'>> = [];
 
-    posts.forEach(post => {
+    posts.forEach((post: BlogPost) => {
       const relevanceScore = this.calculateRelevanceScore(query, [
         post.title,
         post.content,
@@ -321,11 +321,16 @@ export class SearchService {
     const queryLower = query.toLowerCase();
 
     // Get suggestions from all content
+    const skills = this.portfolioService.getSkills() || [];
+    const certificates = this.portfolioService.getCertificates() || [];
+    const projects = this.portfolioService.getProjects() || [];
+    const posts = this.portfolioService.getBlogPosts() || [];
+
     const allContent = [
-      ...this.portfolioService.getSkills(),
-      ...this.portfolioService.getCertificates(),
-      ...this.portfolioService.getProjects(),
-      ...this.portfolioService.getBlogPosts()
+      ...skills,
+      ...certificates,
+      ...projects,
+      ...posts
     ];
 
     allContent.forEach(item => {

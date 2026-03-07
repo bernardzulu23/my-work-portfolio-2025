@@ -1,16 +1,13 @@
 import { Injectable, signal, computed } from '@angular/core';
 import { Router } from '@angular/router';
-import { SupabaseClient, User, Session } from '@supabase/supabase-js';
-import { SupabaseService } from './supabase.service';
 import { SecurityService } from './security.service';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { BehaviorSubject } from 'rxjs';
 
 export interface AuthUser {
   id: string;
   email: string;
-  role?: string;
+  role: string;
   created_at: string;
-  updated_at: string;
 }
 
 export interface LoginCredentials {
@@ -28,14 +25,14 @@ export interface SignUpCredentials {
   providedIn: 'root'
 })
 export class AuthService {
-  private supabase: SupabaseClient;
+  private readonly STORAGE_KEY = 'auth_user';
+  private readonly USERS_KEY = 'app_users';
+  
   private _user = signal<AuthUser | null>(null);
-  private _session = signal<Session | null>(null);
-  private _loading = signal(true);
+  private _loading = signal(false);
 
   // Public signals
   user = this._user.asReadonly();
-  session = this._session.asReadonly();
   loading = this._loading.asReadonly();
 
   // Computed values
@@ -44,99 +41,33 @@ export class AuthService {
 
   // BehaviorSubjects for backward compatibility
   private userSubject = new BehaviorSubject<AuthUser | null>(null);
-  private sessionSubject = new BehaviorSubject<Session | null>(null);
-  private loadingSubject = new BehaviorSubject<boolean>(true);
+  private loadingSubject = new BehaviorSubject<boolean>(false);
 
-  // Observable streams with proper typing
+  // Observable streams
   user$ = this.userSubject.asObservable();
-  session$ = this.sessionSubject.asObservable();
   loading$ = this.loadingSubject.asObservable();
 
   constructor(
-    private supabaseService: SupabaseService,
     private router: Router,
     private securityService: SecurityService
   ) {
-    this.supabase = this.supabaseService.client;
     this.initializeAuth();
   }
 
-  private async initializeAuth() {
-    try {
-      // Get initial session
-      const { data: { session }, error } = await this.supabase.auth.getSession();
-
-      if (error) {
-        console.error('Error getting session:', error);
-        this._loading.set(false);
-        this.loadingSubject.next(false);
-        return;
+  private initializeAuth() {
+    // Check for existing session
+    const savedUser = localStorage.getItem(this.STORAGE_KEY);
+    if (savedUser) {
+      try {
+        const user = JSON.parse(savedUser);
+        this._user.set(user);
+        this.userSubject.next(user);
+      } catch (e) {
+        localStorage.removeItem(this.STORAGE_KEY);
       }
-
-      if (session) {
-        await this.setSession(session);
-      } else {
-        this._loading.set(false);
-        this.loadingSubject.next(false);
-      }
-
-      // Listen for auth changes
-      this.supabase.auth.onAuthStateChange(async (event, session) => {
-        console.log('Auth state changed:', event, session?.user?.email);
-
-        if (session) {
-          await this.setSession(session);
-        } else {
-          this.clearSession();
-        }
-      });
-    } catch (error) {
-      console.error('Error initializing auth:', error);
-      this._loading.set(false);
-      this.loadingSubject.next(false);
     }
-  }
-
-  private async setSession(session: Session) {
-    try {
-      const user = session.user;
-
-      // Fetch role from profiles table instead of user_metadata
-      const { data: profileData, error: profileError } = await this.supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single();
-
-      if (profileError) {
-        console.error('Error fetching user role from profiles:', profileError);
-      }
-
-      const authUser: AuthUser = {
-        id: user.id,
-        email: user.email!,
-        role: profileData?.role || 'user',
-        created_at: user.created_at,
-        updated_at: user.updated_at || user.created_at
-      };
-
-      this._user.set(authUser);
-      this._session.set(session);
-      this.userSubject.next(authUser);
-      this.sessionSubject.next(session);
-    } catch (error) {
-      console.error('Error setting session:', error);
-    } finally {
-      this._loading.set(false);
-      this.loadingSubject.next(false);
-    }
-  }
-
-  private clearSession() {
-    this._user.set(null);
-    this._session.set(null);
-    this.userSubject.next(null);
-    this.sessionSubject.next(null);
+    this._loading.set(false);
+    this.loadingSubject.next(false);
   }
 
   async signIn(email: string, password: string): Promise<{ success: boolean; error?: string }> {
@@ -170,7 +101,7 @@ export class AuthService {
         return { success: false, error: 'Password does not meet security requirements' };
       }
 
-      // Get client identifier (in production, this would be the real IP)
+      // Get client identifier
       const clientIdentifier = this.getClientIdentifier();
 
       // Check rate limiting
@@ -184,56 +115,55 @@ export class AuthService {
         }
       }
 
-      const { data, error } = await this.supabase.auth.signInWithPassword({
-        email: sanitizedEmail,
-        password: sanitizedPassword
+      // Get stored users
+      const users = this.getStoredUsers();
+      const user = users.find(u => u.email === sanitizedEmail);
+
+      if (!user) {
+        this.securityService.recordLoginAttempt(clientIdentifier, false);
+        return { success: false, error: 'Invalid email or password' };
+      }
+
+      // Verify password (in production, use proper hashing)
+      const isValidPassword = this.verifyPassword(sanitizedPassword, user.password);
+      
+      if (!isValidPassword) {
+        this.securityService.recordLoginAttempt(clientIdentifier, false);
+        return { success: false, error: 'Invalid email or password' };
+      }
+
+      // Check if user is admin
+      if (user.role !== 'admin') {
+        this.securityService.recordLoginAttempt(clientIdentifier, false);
+        return { success: false, error: 'Access denied. Admin privileges required.' };
+      }
+
+      // Create session
+      const authUser: AuthUser = {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        created_at: user.created_at
+      };
+
+      this._user.set(authUser);
+      this.userSubject.next(authUser);
+      
+      // Save to localStorage
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(authUser));
+
+      // Record successful login
+      this.securityService.recordLoginAttempt(clientIdentifier, true);
+
+      // Log successful admin login
+      this.securityService.logSecurityEvent({
+        type: 'login_attempt',
+        timestamp: new Date(),
+        details: `Successful admin login for ${sanitizedEmail}`
       });
 
-      if (error) {
-        // Record failed attempt
-        this.securityService.recordLoginAttempt(clientIdentifier, false);
-        return { success: false, error: error.message };
-      }
-
-      if (data.user) {
-        // Fetch role from profiles table for admin check
-        const { data: profileData, error: profileError } = await this.supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', data.user.id)
-          .single();
-
-        if (profileError) {
-          console.error('Error fetching user role from profiles:', profileError);
-          await this.signOut();
-          this.securityService.recordLoginAttempt(clientIdentifier, false);
-          return { success: false, error: 'Access denied. Admin privileges required.' };
-        }
-
-        const userRole = profileData?.role || 'user';
-        if (userRole !== 'admin') {
-          await this.signOut();
-          this.securityService.recordLoginAttempt(clientIdentifier, false);
-          return { success: false, error: 'Access denied. Admin privileges required.' };
-        }
-
-        // Record successful login
-        this.securityService.recordLoginAttempt(clientIdentifier, true);
-
-        // Log successful admin login
-        this.securityService.logSecurityEvent({
-          type: 'login_attempt',
-          timestamp: new Date(),
-          details: `Successful admin login for ${sanitizedEmail}`
-        });
-
-        return { success: true };
-      }
-
-      // Record failed attempt for unknown reason
-      this.securityService.recordLoginAttempt(clientIdentifier, false);
-      return { success: false, error: 'Login failed' };
-    } catch (error: unknown) {
+      return { success: true };
+    } catch (error) {
       console.error('Sign in error:', error);
       return { success: false, error: 'An unexpected error occurred' };
     } finally {
@@ -247,12 +177,10 @@ export class AuthService {
       this._loading.set(true);
       this.loadingSubject.next(true);
 
-      const { error } = await this.supabase.auth.signOut();
-      if (error) {
-        console.error('Sign out error:', error);
-      }
-
-      this.clearSession();
+      this._user.set(null);
+      this.userSubject.next(null);
+      
+      localStorage.removeItem(this.STORAGE_KEY);
       this.router.navigate(['/']);
     } catch (error) {
       console.error('Sign out error:', error);
@@ -267,19 +195,37 @@ export class AuthService {
       this._loading.set(true);
       this.loadingSubject.next(true);
 
-      const { data, error } = await this.supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            role: role
-          }
-        }
-      });
-
-      if (error) {
-        return { success: false, error: error.message };
+      // Validate email
+      if (!this.securityService.validateEmail(email)) {
+        return { success: false, error: 'Invalid email format' };
       }
+
+      // Validate password
+      const passwordValidation = this.securityService.validatePasswordStrength(password);
+      if (!passwordValidation.valid) {
+        return { success: false, error: passwordValidation.errors[0] || 'Password does not meet security requirements' };
+      }
+
+      // Check if user exists
+      const users = this.getStoredUsers();
+      if (users.find(u => u.email === email)) {
+        return { success: false, error: 'User already exists' };
+      }
+
+      // Hash password (simple base64 for demo - use bcrypt in production)
+      const hashedPassword = this.hashPassword(password);
+
+      // Create new user
+      const newUser = {
+        id: this.generateId(),
+        email,
+        password: hashedPassword,
+        role,
+        created_at: new Date().toISOString()
+      };
+
+      users.push(newUser);
+      localStorage.setItem(this.USERS_KEY, JSON.stringify(users));
 
       return { success: true };
     } catch (error) {
@@ -292,20 +238,9 @@ export class AuthService {
   }
 
   async resetPassword(email: string): Promise<{ success: boolean; error?: string }> {
-    try {
-      const { error } = await this.supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`
-      });
-
-      if (error) {
-        return { success: false, error: error.message };
-      }
-
-      return { success: true };
-    } catch (error) {
-      console.error('Reset password error:', error);
-      return { success: false, error: 'An unexpected error occurred' };
-    }
+    // In a real app, this would send an email
+    // For demo, just return success
+    return { success: true };
   }
 
   // Admin check methods
@@ -321,36 +256,31 @@ export class AuthService {
 
   // Set admin role for current user
   async setAdminRole(): Promise<{ success: boolean; error?: string }> {
-    try {
-      const user = this._user();
-      if (!user) {
-        return { success: false, error: 'No user logged in' };
-      }
-
-      const { error } = await this.supabase
-        .from('profiles')
-        .update({ role: 'admin' })
-        .eq('id', user.id);
-
-      if (error) {
-        console.error('Error setting admin role:', error);
-        return { success: false, error: error.message };
-      }
-
-      // Update local user object
-      const updatedUser: AuthUser = {
-        ...user,
-        role: 'admin'
-      };
-
-      this._user.set(updatedUser);
-      this.userSubject.next(updatedUser);
-
-      return { success: true };
-    } catch (error) {
-      console.error('Error setting admin role:', error);
-      return { success: false, error: 'An unexpected error occurred' };
+    const user = this._user();
+    if (!user) {
+      return { success: false, error: 'No user logged in' };
     }
+
+    const users = this.getStoredUsers();
+    const userIndex = users.findIndex(u => u.id === user.id);
+    
+    if (userIndex === -1) {
+      return { success: false, error: 'User not found' };
+    }
+
+    users[userIndex].role = 'admin';
+    localStorage.setItem(this.USERS_KEY, JSON.stringify(users));
+
+    const updatedUser: AuthUser = {
+      ...user,
+      role: 'admin'
+    };
+
+    this._user.set(updatedUser);
+    this.userSubject.next(updatedUser);
+    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(updatedUser));
+
+    return { success: true };
   }
 
   // Utility methods
@@ -363,13 +293,41 @@ export class AuthService {
   }
 
   private getClientIdentifier(): string {
-    // In a real application, this would be provided by the server
-    // For demo purposes, we'll use a hash of the user agent
     return btoa(navigator.userAgent).substring(0, 16);
   }
 
   private formatTime(date: Date): string {
     const diff = Math.ceil((date.getTime() - Date.now()) / 1000 / 60);
     return `${diff} minutes`;
+  }
+
+  private getStoredUsers(): any[] {
+    const users = localStorage.getItem(this.USERS_KEY);
+    if (!users) {
+      // Create default admin user
+      const defaultUsers = [{
+        id: 'admin-1',
+        email: 'admin@bernardzulu.com',
+        password: this.hashPassword('admin123'),
+        role: 'admin',
+        created_at: new Date().toISOString()
+      }];
+      localStorage.setItem(this.USERS_KEY, JSON.stringify(defaultUsers));
+      return defaultUsers;
+    }
+    return JSON.parse(users);
+  }
+
+  private hashPassword(password: string): string {
+    // Simple hash for demo - use bcrypt in production
+    return btoa(password + '_salt_bernard');
+  }
+
+  private verifyPassword(password: string, hash: string): boolean {
+    return this.hashPassword(password) === hash;
+  }
+
+  private generateId(): string {
+    return Date.now().toString(36) + Math.random().toString(36).substr(2);
   }
 }

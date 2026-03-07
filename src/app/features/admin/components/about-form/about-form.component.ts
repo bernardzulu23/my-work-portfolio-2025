@@ -430,6 +430,7 @@ export class AboutFormComponent implements OnInit {
 
   @Output() onSubmit = new EventEmitter<About>();
   @Output() onCancel = new EventEmitter<void>();
+  @Output() onBioChange = new EventEmitter<string>();
 
   aboutForm!: FormGroup;
 
@@ -440,6 +441,10 @@ export class AboutFormComponent implements OnInit {
     if (this.about) {
       this.populateForm();
     }
+    const bioControl = this.aboutForm.get('bio');
+    bioControl?.valueChanges.subscribe((val: string) => {
+      this.onBioChange.emit(val);
+    });
   }
 
   private initializeForm() {

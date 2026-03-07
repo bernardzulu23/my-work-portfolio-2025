@@ -1,9 +1,8 @@
-import { Injectable, signal, computed } from '@angular/core';
+import { Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, Observable } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
-import { SupabaseService } from './supabase.service';
 import type { Testimonial, Recommendation } from '../types';
 
 export interface About {
@@ -128,7 +127,8 @@ export interface Certificate {
   providedIn: 'root'
 })
 export class AdminService {
-  private apiUrl = 'api/admin'; // This would be your actual API endpoint
+  private apiUrl = 'api/admin';
+  private storageKey = 'portfolio_data';
 
   // Signals for reactive state management
   private blogPostsSignal = signal<BlogPost[]>([]);
@@ -163,356 +163,49 @@ export class AdminService {
   testimonials$ = this.testimonialsSubject.asObservable();
   recommendations$ = this.recommendationsSubject.asObservable();
 
-  constructor(private http: HttpClient, private supabaseService: SupabaseService) {
+  constructor(private http: HttpClient) {
     this.loadInitialData();
   }
 
-  // Load initial data
+  // Load initial data from API
   async loadInitialData() {
     try {
-      await this.loadDataFromSupabase();
-    } catch (error) {
-      console.error('Error loading data from Supabase:', error);
-      console.error('Supabase connection details:', {
-        url: environment.supabase.url,
-        hasAnonKey: !!environment.supabase.anonKey,
-        errorType: (error as Error)?.name,
-        errorMessage: (error as Error)?.message
-      });
-
-      // Set empty data instead of using mock data
-      console.warn('Supabase connection failed. Using empty data.');
-      this.setBlogPosts([]);
-      this.setSkills([]);
-      this.setWorkExperience([]);
-      this.setEducation([]);
-      this.setProjects([]);
-      this.setCertificates([]);
-      this.setAbout([]);
-      this.setTestimonials([]);
-      this.setRecommendations([]);
-    }
-  }
-
-  private async loadDataFromSupabase() {
-    try {
-      // Load all data from Supabase
       const [
-        blogPosts,
+        about,
         skills,
         workExperience,
         education,
         projects,
         certificates,
         testimonials,
-        recommendations
+        recommendations,
+        blogPosts
       ] = await Promise.all([
-        this.supabaseService.getAllBlogPosts(),
-        this.supabaseService.getSkills(),
-        this.supabaseService.getWorkExperience(),
-        this.supabaseService.getEducation(),
-        this.supabaseService.getProjects(),
-        this.supabaseService.getCertificates(),
-        this.supabaseService.getTestimonials(),
-        this.supabaseService.getRecommendations()
+        this.http.get<About>(`${environment.apiUrl}/about`).toPromise(),
+        this.http.get<Skill[]>(`${environment.apiUrl}/skills`).toPromise(),
+        this.http.get<WorkExperience[]>(`${environment.apiUrl}/work-experience`).toPromise(),
+        this.http.get<Education[]>(`${environment.apiUrl}/education`).toPromise(),
+        this.http.get<Project[]>(`${environment.apiUrl}/projects`).toPromise(),
+        this.http.get<Certificate[]>(`${environment.apiUrl}/certificates`).toPromise(),
+        this.http.get<Testimonial[]>(`${environment.apiUrl}/testimonials`).toPromise(),
+        this.http.get<Recommendation[]>(`${environment.apiUrl}/recommendations`).toPromise(),
+        this.http.get<BlogPost[]>(`${environment.apiUrl}/blog-posts`).toPromise()
       ]);
 
-      // Transform data to match Admin service interfaces
-      const transformedBlogPosts = blogPosts.map((post: unknown) => ({
-        ...(post as any),
-        publishDate: new Date((post as any).publish_date),
-        readTime: (post as any).read_time || 5
-      }));
+      if (about) this.setAbout([about]);
+      if (skills) this.setSkills(skills);
+      if (workExperience) this.setWorkExperience(workExperience.map((e: any) => ({ ...e, startDate: new Date(e.startDate), endDate: e.endDate ? new Date(e.endDate) : undefined })));
+      if (education) this.setEducation(education.map((e: any) => ({ ...e, startDate: new Date(e.startDate), endDate: e.endDate ? new Date(e.endDate) : undefined })));
+      if (projects) this.setProjects(projects);
+      if (certificates) this.setCertificates(certificates.map((c: any) => ({ ...c, issueDate: new Date(c.issueDate), expiryDate: c.expiryDate ? new Date(c.expiryDate) : undefined })));
+      if (testimonials) this.setTestimonials(testimonials.map((t: any) => ({ ...t, date: new Date(t.date) })));
+      if (recommendations) this.setRecommendations(recommendations.map((r: any) => ({ ...r, date: new Date(r.date) })));
+      if (blogPosts) this.setBlogPosts(blogPosts.map((p: any) => ({ ...p, publishDate: new Date(p.publishDate) })));
 
-      const transformedSkills = skills.map((skill: unknown) => ({
-        ...(skill as any),
-        yearsOfExperience: (skill as any).years_of_experience || 0
-      }));
-
-      const transformedWorkExperience = workExperience.map((exp: unknown) => ({
-        ...(exp as any),
-        startDate: new Date((exp as any).start_date),
-        endDate: (exp as any).end_date ? new Date((exp as any).end_date) : undefined,
-        employmentType: (exp as any).employment_type || 'Full-time'
-      }));
-
-      const transformedEducation = education.map((edu: unknown) => ({
-        ...(edu as any),
-        startDate: new Date((edu as any).start_date),
-        endDate: (edu as any).end_date ? new Date((edu as any).end_date) : undefined
-      }));
-
-      const transformedProjects = projects.map((project: unknown) => ({
-        ...(project as any),
-        imageUrl: (project as any).image_url || '/assets/projects/default.jpg'
-      }));
-
-      const transformedCertificates = certificates.map((cert: unknown) => ({
-        ...(cert as any),
-        issueDate: new Date((cert as any).issue_date),
-        expiryDate: (cert as any).expiry_date ? new Date((cert as any).expiry_date) : undefined,
-        pdfUrl: (cert as any).pdf_url || '',
-        thumbnailUrl: (cert as any).thumbnail_url || '',
-        verificationBadge: (cert as any).verification_badge || false
-      }));
-
-      const transformedTestimonials = testimonials.map((testimonial: unknown) => ({
-        ...(testimonial as any),
-        date: new Date((testimonial as any).date)
-      }));
-
-      const transformedRecommendations = recommendations.map((recommendation: unknown) => ({
-        ...(recommendation as any),
-        date: new Date((recommendation as any).date)
-      }));
-
-      this.setBlogPosts(transformedBlogPosts);
-      this.setSkills(transformedSkills);
-      this.setWorkExperience(transformedWorkExperience);
-      this.setEducation(transformedEducation);
-      this.setProjects(transformedProjects);
-      this.setCertificates(transformedCertificates);
-      this.setTestimonials(transformedTestimonials);
-      this.setRecommendations(transformedRecommendations);
-
-      // Load about data with related tables
-      const aboutData = await this.supabaseService.getAbout();
-      const transformedAbout = {
-        ...aboutData,
-        values: aboutData.about_values || [],
-        experience: aboutData.about_experience || []
-      };
-      this.setAbout([transformedAbout]);
-
+      console.log('Data loaded from API');
     } catch (error) {
-      console.error('Error loading data from Supabase:', error);
-      throw error;
+      console.error('Error loading data from API:', error);
     }
-  }
-
-  private loadMockData() {
-    // Mock blog posts
-    const mockBlogPosts: BlogPost[] = [
-      {
-        id: '1',
-        title: 'Getting Started with Angular 19',
-        content: 'Angular 19 brings many new features...',
-        excerpt: 'Learn about the latest features in Angular 19',
-        author: 'Bernard Zulu',
-        publishDate: new Date('2024-01-15'),
-        tags: ['Angular', 'Frontend', 'Tutorial'],
-        category: 'Development',
-        readTime: 5,
-        featured: true,
-        status: 'published'
-      }
-    ];
-
-    // Mock skills
-    const mockSkills: Skill[] = [
-      {
-        id: '1',
-        name: 'Angular',
-        category: 'Frontend',
-        proficiency: 90,
-        yearsOfExperience: 3,
-        certifications: ['Angular Developer'],
-        projects: 15
-      },
-      {
-        id: '2',
-        name: 'TypeScript',
-        category: 'Language',
-        proficiency: 85,
-        yearsOfExperience: 3,
-        certifications: [],
-        projects: 20
-      }
-    ];
-
-    // Mock work experience
-    const mockWorkExperience: WorkExperience[] = [
-      {
-        id: '1',
-        company: 'Tech Solutions Inc',
-        position: 'Full Stack Developer',
-        startDate: new Date('2022-01-01'),
-        current: true,
-        description: 'Developing modern web applications using Angular and Node.js',
-        achievements: ['Led 5 major projects', 'Improved performance by 40%'],
-        technologies: ['Angular', 'TypeScript', 'Node.js', 'MongoDB'],
-        location: 'Lusaka, Zambia',
-        employmentType: 'Full-time'
-      }
-    ];
-
-    // Mock education
-    const mockEducation: Education[] = [
-      {
-        id: '1',
-        institution: 'University of Zambia',
-        degree: 'Bachelor of Science',
-        field: 'Computer Science',
-        startDate: new Date('2018-09-01'),
-        endDate: new Date('2022-06-30'),
-        current: false,
-        gpa: 3.8,
-        honors: ['Dean\'s List', 'Best Final Year Project'],
-        description: 'Focused on software engineering and web development',
-        institutionLogo: '',
-        location: 'Lusaka, Zambia'
-      }
-    ];
-
-    // Mock projects
-    const mockProjects: Project[] = [
-      {
-        id: '1',
-        title: 'E-Commerce Platform',
-        description: 'Modern e-commerce solution with payment integration',
-        technologies: ['Angular', 'Node.js', 'Stripe', 'MongoDB'],
-        githubUrl: 'https://github.com/bernardzulu23/ecommerce',
-        liveUrl: 'https://ecommerce-demo.com',
-        imageUrl: '/assets/projects/ecommerce.jpg',
-        featured: true,
-        category: 'Web Application',
-        status: 'active'
-      }
-    ];
-
-    // Mock certificates
-    const mockCertificates: Certificate[] = [
-      {
-        id: '1',
-        title: 'AWS Certified Developer',
-        issuer: 'Amazon Web Services',
-        issueDate: new Date('2023-06-15'),
-        expiryDate: new Date('2026-06-15'),
-        category: 'Cloud',
-        pdfUrl: '/assets/certificates/aws-developer.pdf',
-        thumbnailUrl: '/assets/certificates/aws-thumb.jpg',
-        verificationBadge: true,
-        issuerVerification: 'https://aws.amazon.com/verification',
-        credentialId: 'AWS-DEV-12345'
-      }
-    ];
-
-    // Mock about data
-    const mockAbout: About[] = [
-      {
-        id: '1',
-        name: 'Bernard Zulu',
-        title: 'Full Stack Developer & IT Support Specialist',
-        bio: 'I\'m a dedicated IT Support Specialist, Junior Network Technician, and Full-Stack Developer with expertise in providing technical support, network administration, and developing web applications. I specialize in troubleshooting complex IT issues, managing network infrastructure, and creating efficient software solutions.',
-        location: 'Lusaka, Zambia',
-        email: 'bernard.zulu@example.com',
-        phone: '+260 123 456 789',
-        tagline: 'Building the future, one line of code at a time',
-        availability: 'available',
-        values: [
-          {
-            id: '1',
-            title: 'Innovation',
-            description: 'Always exploring new technologies and creative solutions to complex problems.',
-            icon: 'lightning-bolt',
-            color: 'blue'
-          },
-          {
-            id: '2',
-            title: 'Quality',
-            description: 'Committed to writing clean, maintainable code and delivering exceptional user experiences.',
-            icon: 'heart',
-            color: 'purple'
-          },
-          {
-            id: '3',
-            title: 'Collaboration',
-            description: 'Believe in the power of teamwork and open communication to achieve great results.',
-            icon: 'users',
-            color: 'green'
-          }
-        ],
-        experience: [
-          {
-            id: '1',
-            year: '2024',
-            title: 'IT Support Specialist',
-            company: 'Technology Solutions Zambia',
-            description: 'Providing comprehensive IT support and network administration services. Managing network infrastructure, troubleshooting hardware/software issues, and implementing system optimizations for improved performance.',
-            technologies: ['Network Administration', 'System Optimization', 'Technical Support']
-          },
-          {
-            id: '2',
-            year: '2023',
-            title: 'Junior Network Technician',
-            company: 'Zambia IT Services',
-            description: 'Maintaining and monitoring network systems, configuring routers and switches, and providing technical support to end-users. Implemented network security measures and conducted regular system maintenance.',
-            technologies: ['Network Security', 'Router Configuration', 'System Maintenance']
-          },
-          {
-            id: '3',
-            year: '2022',
-            title: 'Full-Stack Developer',
-            company: 'Freelance / Personal Projects',
-            description: 'Developed web applications using Angular, Node.js, and modern frameworks. Built responsive user interfaces and implemented backend services. Created portfolio website and various client projects.',
-            technologies: ['Angular', 'Node.js', 'TypeScript', 'MongoDB']
-          }
-        ]
-      }
-    ];
-
-    // Mock testimonials
-    const mockTestimonials: Testimonial[] = [
-      {
-        id: '1',
-        author: 'Sarah Johnson',
-        position: 'Project Manager',
-        company: 'Tech Solutions Inc',
-        content: 'Bernard is an exceptional developer who consistently delivers high-quality work. His attention to detail and problem-solving skills are outstanding.',
-        avatar: '/assets/testimonials/sarah.jpg',
-        rating: 5,
-        date: new Date('2024-01-15'),
-        featured: true,
-        verified: true
-      },
-      {
-        id: '2',
-        author: 'Michael Chen',
-        position: 'CTO',
-        company: 'Digital Innovations',
-        content: 'Working with Bernard has been a pleasure. He brings both technical expertise and creative thinking to every project.',
-        avatar: '/assets/testimonials/michael.jpg',
-        rating: 5,
-        date: new Date('2024-01-10'),
-        featured: false,
-        verified: true
-      }
-    ];
-
-    // Mock recommendations
-    const mockRecommendations: Recommendation[] = [
-      {
-        id: '1',
-        author: 'David Wilson',
-        position: 'Senior Developer',
-        company: 'CloudTech Solutions',
-        content: 'I highly recommend Bernard for any development project. His skills and professionalism are top-notch.',
-        date: new Date('2024-01-20'),
-        avatar: '/assets/recommendations/david.jpg',
-        linkedinUrl: 'https://linkedin.com/in/davidwilson',
-        verified: true
-      }
-    ];
-
-    this.setBlogPosts(mockBlogPosts);
-    this.setSkills(mockSkills);
-    this.setWorkExperience(mockWorkExperience);
-    this.setEducation(mockEducation);
-    this.setProjects(mockProjects);
-    this.setCertificates(mockCertificates);
-    this.setAbout(mockAbout);
-    this.setTestimonials(mockTestimonials);
-    this.setRecommendations(mockRecommendations);
   }
 
   // Blog Posts Management
@@ -520,26 +213,43 @@ export class AdminService {
     return this.blogPostsSignal();
   }
 
-  addBlogPost(post: Omit<BlogPost, 'id'>) {
-    const newPost: BlogPost = {
-      ...post,
-      id: this.generateId()
-    };
-    const posts = [...this.blogPostsSignal(), newPost];
-    this.setBlogPosts(posts);
-    return newPost;
+  async addBlogPost(post: Omit<BlogPost, 'id'>): Promise<BlogPost> {
+    const id = this.generateId();
+    const newPost = { ...post, id };
+    
+    try {
+      await this.http.post(`${environment.apiUrl}/blog-posts`, newPost).toPromise();
+      const posts = [...this.blogPostsSignal(), newPost];
+      this.setBlogPosts(posts);
+      return newPost;
+    } catch (error) {
+      console.error('Error adding blog post:', error);
+      throw error;
+    }
   }
 
-  updateBlogPost(id: string, updates: Partial<BlogPost>) {
-    const posts = this.blogPostsSignal().map(post =>
-      post.id === id ? { ...post, ...updates } : post
-    );
-    this.setBlogPosts(posts);
+  async updateBlogPost(id: string, updates: Partial<BlogPost>) {
+    try {
+      await this.http.put(`${environment.apiUrl}/blog-posts/${id}`, updates).toPromise();
+      const posts = this.blogPostsSignal().map(post =>
+        post.id === id ? { ...post, ...updates } : post
+      );
+      this.setBlogPosts(posts);
+    } catch (error) {
+      console.error('Error updating blog post:', error);
+      throw error;
+    }
   }
 
-  deleteBlogPost(id: string) {
-    const posts = this.blogPostsSignal().filter(post => post.id !== id);
-    this.setBlogPosts(posts);
+  async deleteBlogPost(id: string) {
+    try {
+      await this.http.delete(`${environment.apiUrl}/blog-posts/${id}`).toPromise();
+      const posts = this.blogPostsSignal().filter(post => post.id !== id);
+      this.setBlogPosts(posts);
+    } catch (error) {
+      console.error('Error deleting blog post:', error);
+      throw error;
+    }
   }
 
   // Skills Management
@@ -547,20 +257,15 @@ export class AdminService {
     return this.skillsSignal();
   }
 
-  async addSkill(skill: Omit<Skill, 'id'>) {
+  async addSkill(skill: Omit<Skill, 'id'>): Promise<Skill> {
+    const id = this.generateId();
+    const newSkill = { ...skill, id };
+    
     try {
-      const supabaseSkill = {
-        ...skill,
-        years_of_experience: skill.yearsOfExperience
-      };
-      const newSkill = await this.supabaseService.addSkill(supabaseSkill);
-      const transformedSkill: Skill = {
-        ...newSkill,
-        yearsOfExperience: newSkill.years_of_experience || 0
-      };
-      const skills = [...this.skillsSignal(), transformedSkill];
+      await this.http.post(`${environment.apiUrl}/skills`, newSkill).toPromise();
+      const skills = [...this.skillsSignal(), newSkill];
       this.setSkills(skills);
-      return transformedSkill;
+      return newSkill;
     } catch (error) {
       console.error('Error adding skill:', error);
       throw error;
@@ -569,17 +274,9 @@ export class AdminService {
 
   async updateSkill(id: string, updates: Partial<Skill>) {
     try {
-      const supabaseUpdates = {
-        ...updates,
-        years_of_experience: updates.yearsOfExperience
-      };
-      const updatedSkill = await this.supabaseService.updateSkill(id, supabaseUpdates);
-      const transformedSkill: Skill = {
-        ...updatedSkill,
-        yearsOfExperience: updatedSkill.years_of_experience || 0
-      };
+      await this.http.put(`${environment.apiUrl}/skills/${id}`, updates).toPromise();
       const skills = this.skillsSignal().map(skill =>
-        skill.id === id ? transformedSkill : skill
+        skill.id === id ? { ...skill, ...updates } : skill
       );
       this.setSkills(skills);
     } catch (error) {
@@ -590,7 +287,7 @@ export class AdminService {
 
   async deleteSkill(id: string) {
     try {
-      await this.supabaseService.deleteSkill(id);
+      await this.http.delete(`${environment.apiUrl}/skills/${id}`).toPromise();
       const skills = this.skillsSignal().filter(skill => skill.id !== id);
       this.setSkills(skills);
     } catch (error) {
@@ -604,26 +301,43 @@ export class AdminService {
     return this.workExperienceSignal();
   }
 
-  addWorkExperience(experience: Omit<WorkExperience, 'id'>) {
-    const newExperience: WorkExperience = {
-      ...experience,
-      id: this.generateId()
-    };
-    const experiences = [...this.workExperienceSignal(), newExperience];
-    this.setWorkExperience(experiences);
-    return newExperience;
+  async addWorkExperience(experience: Omit<WorkExperience, 'id'>): Promise<WorkExperience> {
+    const id = this.generateId();
+    const newExperience = { ...experience, id };
+    
+    try {
+      await this.http.post(`${environment.apiUrl}/work-experience`, newExperience).toPromise();
+      const experiences = [...this.workExperienceSignal(), newExperience];
+      this.setWorkExperience(experiences);
+      return newExperience;
+    } catch (error) {
+      console.error('Error adding work experience:', error);
+      throw error;
+    }
   }
 
-  updateWorkExperience(id: string, updates: Partial<WorkExperience>) {
-    const experiences = this.workExperienceSignal().map(exp =>
-      exp.id === id ? { ...exp, ...updates } : exp
-    );
-    this.setWorkExperience(experiences);
+  async updateWorkExperience(id: string, updates: Partial<WorkExperience>) {
+    try {
+      await this.http.put(`${environment.apiUrl}/work-experience/${id}`, updates).toPromise();
+      const experiences = this.workExperienceSignal().map(exp =>
+        exp.id === id ? { ...exp, ...updates } : exp
+      );
+      this.setWorkExperience(experiences);
+    } catch (error) {
+      console.error('Error updating work experience:', error);
+      throw error;
+    }
   }
 
-  deleteWorkExperience(id: string) {
-    const experiences = this.workExperienceSignal().filter(exp => exp.id !== id);
-    this.setWorkExperience(experiences);
+  async deleteWorkExperience(id: string) {
+    try {
+      await this.http.delete(`${environment.apiUrl}/work-experience/${id}`).toPromise();
+      const experiences = this.workExperienceSignal().filter(exp => exp.id !== id);
+      this.setWorkExperience(experiences);
+    } catch (error) {
+      console.error('Error deleting work experience:', error);
+      throw error;
+    }
   }
 
   // Education Management
@@ -631,26 +345,43 @@ export class AdminService {
     return this.educationSignal();
   }
 
-  addEducation(education: Omit<Education, 'id'>) {
-    const newEducation: Education = {
-      ...education,
-      id: this.generateId()
-    };
-    const educations = [...this.educationSignal(), newEducation];
-    this.setEducation(educations);
-    return newEducation;
+  async addEducation(education: Omit<Education, 'id'>): Promise<Education> {
+    const id = this.generateId();
+    const newEducation = { ...education, id };
+    
+    try {
+      await this.http.post(`${environment.apiUrl}/education`, newEducation).toPromise();
+      const educations = [...this.educationSignal(), newEducation];
+      this.setEducation(educations);
+      return newEducation;
+    } catch (error) {
+      console.error('Error adding education:', error);
+      throw error;
+    }
   }
 
-  updateEducation(id: string, updates: Partial<Education>) {
-    const educations = this.educationSignal().map(edu =>
-      edu.id === id ? { ...edu, ...updates } : edu
-    );
-    this.setEducation(educations);
+  async updateEducation(id: string, updates: Partial<Education>) {
+    try {
+      await this.http.put(`${environment.apiUrl}/education/${id}`, updates).toPromise();
+      const educations = this.educationSignal().map(edu =>
+        edu.id === id ? { ...edu, ...updates } : edu
+      );
+      this.setEducation(educations);
+    } catch (error) {
+      console.error('Error updating education:', error);
+      throw error;
+    }
   }
 
-  deleteEducation(id: string) {
-    const educations = this.educationSignal().filter(edu => edu.id !== id);
-    this.setEducation(educations);
+  async deleteEducation(id: string) {
+    try {
+      await this.http.delete(`${environment.apiUrl}/education/${id}`).toPromise();
+      const educations = this.educationSignal().filter(edu => edu.id !== id);
+      this.setEducation(educations);
+    } catch (error) {
+      console.error('Error deleting education:', error);
+      throw error;
+    }
   }
 
   // Projects Management
@@ -658,20 +389,15 @@ export class AdminService {
     return this.projectsSignal();
   }
 
-  async addProject(project: Omit<Project, 'id'>) {
+  async addProject(project: Omit<Project, 'id'>): Promise<Project> {
+    const id = this.generateId();
+    const newProject = { ...project, id };
+    
     try {
-      const supabaseProject = {
-        ...project,
-        image_url: project.imageUrl
-      };
-      const newProject = await this.supabaseService.addProject(supabaseProject);
-      const transformedProject: Project = {
-        ...newProject,
-        imageUrl: newProject.image_url || '/assets/projects/default.jpg'
-      };
-      const projects = [...this.projectsSignal(), transformedProject];
+      await this.http.post(`${environment.apiUrl}/projects`, newProject).toPromise();
+      const projects = [...this.projectsSignal(), newProject];
       this.setProjects(projects);
-      return transformedProject;
+      return newProject;
     } catch (error) {
       console.error('Error adding project:', error);
       throw error;
@@ -680,17 +406,9 @@ export class AdminService {
 
   async updateProject(id: string, updates: Partial<Project>) {
     try {
-      const supabaseUpdates = {
-        ...updates,
-        image_url: updates.imageUrl
-      };
-      const updatedProject = await this.supabaseService.updateProject(id, supabaseUpdates);
-      const transformedProject: Project = {
-        ...updatedProject,
-        imageUrl: updatedProject.image_url || '/assets/projects/default.jpg'
-      };
+      await this.http.put(`${environment.apiUrl}/projects/${id}`, updates).toPromise();
       const projects = this.projectsSignal().map(project =>
-        project.id === id ? transformedProject : project
+        project.id === id ? { ...project, ...updates } : project
       );
       this.setProjects(projects);
     } catch (error) {
@@ -701,7 +419,7 @@ export class AdminService {
 
   async deleteProject(id: string) {
     try {
-      await this.supabaseService.deleteProject(id);
+      await this.http.delete(`${environment.apiUrl}/projects/${id}`).toPromise();
       const projects = this.projectsSignal().filter(project => project.id !== id);
       this.setProjects(projects);
     } catch (error) {
@@ -715,28 +433,15 @@ export class AdminService {
     return this.certificatesSignal();
   }
 
-  async addCertificate(certificate: Omit<Certificate, 'id'>) {
+  async addCertificate(certificate: Omit<Certificate, 'id'>): Promise<Certificate> {
+    const id = this.generateId();
+    const newCertificate = { ...certificate, id };
+    
     try {
-      const supabaseCertificate = {
-        ...certificate,
-        issue_date: certificate.issueDate.toISOString(),
-        expiry_date: certificate.expiryDate?.toISOString(),
-        pdf_url: certificate.pdfUrl,
-        thumbnail_url: certificate.thumbnailUrl,
-        verification_badge: certificate.verificationBadge
-      };
-      const newCertificate = await this.supabaseService.addCertificate(supabaseCertificate);
-      const transformedCertificate: Certificate = {
-        ...newCertificate,
-        issueDate: new Date(newCertificate.issue_date),
-        expiryDate: newCertificate.expiry_date ? new Date(newCertificate.expiry_date) : undefined,
-        pdfUrl: newCertificate.pdf_url || '',
-        thumbnailUrl: newCertificate.thumbnail_url || '',
-        verificationBadge: newCertificate.verification_badge || false
-      };
-      const certificates = [...this.certificatesSignal(), transformedCertificate];
+      await this.http.post(`${environment.apiUrl}/certificates`, newCertificate).toPromise();
+      const certificates = [...this.certificatesSignal(), newCertificate];
       this.setCertificates(certificates);
-      return transformedCertificate;
+      return newCertificate;
     } catch (error) {
       console.error('Error adding certificate:', error);
       throw error;
@@ -745,25 +450,9 @@ export class AdminService {
 
   async updateCertificate(id: string, updates: Partial<Certificate>) {
     try {
-      const supabaseUpdates = {
-        ...updates,
-        issue_date: updates.issueDate?.toISOString(),
-        expiry_date: updates.expiryDate?.toISOString(),
-        pdf_url: updates.pdfUrl,
-        thumbnail_url: updates.thumbnailUrl,
-        verification_badge: updates.verificationBadge
-      };
-      const updatedCertificate = await this.supabaseService.updateCertificate(id, supabaseUpdates);
-      const transformedCertificate: Certificate = {
-        ...updatedCertificate,
-        issueDate: new Date(updatedCertificate.issue_date),
-        expiryDate: updatedCertificate.expiry_date ? new Date(updatedCertificate.expiry_date) : undefined,
-        pdfUrl: updatedCertificate.pdf_url || '',
-        thumbnailUrl: updatedCertificate.thumbnail_url || '',
-        verificationBadge: updatedCertificate.verification_badge || false
-      };
+      await this.http.put(`${environment.apiUrl}/certificates/${id}`, updates).toPromise();
       const certificates = this.certificatesSignal().map(cert =>
-        cert.id === id ? transformedCertificate : cert
+        cert.id === id ? { ...cert, ...updates } : cert
       );
       this.setCertificates(certificates);
     } catch (error) {
@@ -774,7 +463,7 @@ export class AdminService {
 
   async deleteCertificate(id: string) {
     try {
-      await this.supabaseService.deleteCertificate(id);
+      await this.http.delete(`${environment.apiUrl}/certificates/${id}`).toPromise();
       const certificates = this.certificatesSignal().filter(cert => cert.id !== id);
       this.setCertificates(certificates);
     } catch (error) {
@@ -788,26 +477,43 @@ export class AdminService {
     return this.aboutSignal();
   }
 
-  addAbout(about: Omit<About, 'id'>) {
-    const newAbout: About = {
-      ...about,
-      id: this.generateId()
-    };
-    const abouts = [...this.aboutSignal(), newAbout];
-    this.setAbout(abouts);
-    return newAbout;
+  async addAbout(about: Omit<About, 'id'>): Promise<About> {
+    const id = this.generateId();
+    const newAbout = { ...about, id };
+    
+    // For about, we usually have a singleton, but if we add, we assume update logic on backend or single row
+    try {
+      await this.http.put(`${environment.apiUrl}/about/${id}`, newAbout).toPromise(); // Using PUT for about generally
+      this.setAbout([newAbout]);
+      return newAbout;
+    } catch (error) {
+       console.error('Error adding about:', error);
+       throw error;
+    }
   }
 
-  updateAbout(id: string, updates: Partial<About>) {
-    const abouts = this.aboutSignal().map(about =>
-      about.id === id ? { ...about, ...updates } : about
-    );
-    this.setAbout(abouts);
+  async updateAbout(id: string, updates: Partial<About>) {
+    try {
+      // Merge current about with updates to send full object if needed, or partial
+      const currentAbout = this.aboutSignal().find(a => a.id === id);
+      const updatedAbout = { ...currentAbout, ...updates };
+
+      await this.http.put(`${environment.apiUrl}/about/${id}`, updatedAbout).toPromise();
+      
+      const abouts = this.aboutSignal().map(about =>
+        about.id === id ? { ...about, ...updates } : about
+      );
+      this.setAbout(abouts);
+    } catch (error) {
+      console.error('Error updating about:', error);
+      throw error;
+    }
   }
 
-  deleteAbout(id: string) {
-    const abouts = this.aboutSignal().filter(about => about.id !== id);
-    this.setAbout(abouts);
+  async deleteAbout(id: string) {
+     // About usually isn't deleted, but for consistency
+     const abouts = this.aboutSignal().filter(about => about.id !== id);
+     this.setAbout(abouts);
   }
 
   // Testimonials Management
@@ -815,26 +521,43 @@ export class AdminService {
     return this.testimonialsSignal();
   }
 
-  addTestimonial(testimonial: Omit<Testimonial, 'id'>) {
-    const newTestimonial: Testimonial = {
-      ...testimonial,
-      id: this.generateId()
-    };
-    const testimonials = [...this.testimonialsSignal(), newTestimonial];
-    this.setTestimonials(testimonials);
-    return newTestimonial;
+  async addTestimonial(testimonial: Omit<Testimonial, 'id'>): Promise<Testimonial> {
+    const id = this.generateId();
+    const newTestimonial = { ...testimonial, id };
+    
+    try {
+      await this.http.post(`${environment.apiUrl}/testimonials`, newTestimonial).toPromise();
+      const testimonials = [...this.testimonialsSignal(), newTestimonial];
+      this.setTestimonials(testimonials);
+      return newTestimonial;
+    } catch (error) {
+      console.error('Error adding testimonial:', error);
+      throw error;
+    }
   }
 
-  updateTestimonial(id: string, updates: Partial<Testimonial>) {
-    const testimonials = this.testimonialsSignal().map(testimonial =>
-      testimonial.id === id ? { ...testimonial, ...updates } : testimonial
-    );
-    this.setTestimonials(testimonials);
+  async updateTestimonial(id: string, updates: Partial<Testimonial>) {
+    try {
+      await this.http.put(`${environment.apiUrl}/testimonials/${id}`, updates).toPromise();
+      const testimonials = this.testimonialsSignal().map(testimonial =>
+        testimonial.id === id ? { ...testimonial, ...updates } : testimonial
+      );
+      this.setTestimonials(testimonials);
+    } catch (error) {
+      console.error('Error updating testimonial:', error);
+      throw error;
+    }
   }
 
-  deleteTestimonial(id: string) {
-    const testimonials = this.testimonialsSignal().filter(testimonial => testimonial.id !== id);
-    this.setTestimonials(testimonials);
+  async deleteTestimonial(id: string) {
+    try {
+      await this.http.delete(`${environment.apiUrl}/testimonials/${id}`).toPromise();
+      const testimonials = this.testimonialsSignal().filter(testimonial => testimonial.id !== id);
+      this.setTestimonials(testimonials);
+    } catch (error) {
+      console.error('Error deleting testimonial:', error);
+      throw error;
+    }
   }
 
   // Recommendations Management
@@ -842,26 +565,43 @@ export class AdminService {
     return this.recommendationsSignal();
   }
 
-  addRecommendation(recommendation: Omit<Recommendation, 'id'>) {
-    const newRecommendation: Recommendation = {
-      ...recommendation,
-      id: this.generateId()
-    };
-    const recommendations = [...this.recommendationsSignal(), newRecommendation];
-    this.setRecommendations(recommendations);
-    return newRecommendation;
+  async addRecommendation(recommendation: Omit<Recommendation, 'id'>): Promise<Recommendation> {
+    const id = this.generateId();
+    const newRecommendation = { ...recommendation, id };
+    
+    try {
+      await this.http.post(`${environment.apiUrl}/recommendations`, newRecommendation).toPromise();
+      const recommendations = [...this.recommendationsSignal(), newRecommendation];
+      this.setRecommendations(recommendations);
+      return newRecommendation;
+    } catch (error) {
+      console.error('Error adding recommendation:', error);
+      throw error;
+    }
   }
 
-  updateRecommendation(id: string, updates: Partial<Recommendation>) {
-    const recommendations = this.recommendationsSignal().map(recommendation =>
-      recommendation.id === id ? { ...recommendation, ...updates } : recommendation
-    );
-    this.setRecommendations(recommendations);
+  async updateRecommendation(id: string, updates: Partial<Recommendation>) {
+    try {
+      await this.http.put(`${environment.apiUrl}/recommendations/${id}`, updates).toPromise();
+      const recommendations = this.recommendationsSignal().map(recommendation =>
+        recommendation.id === id ? { ...recommendation, ...updates } : recommendation
+      );
+      this.setRecommendations(recommendations);
+    } catch (error) {
+      console.error('Error updating recommendation:', error);
+      throw error;
+    }
   }
 
-  deleteRecommendation(id: string) {
-    const recommendations = this.recommendationsSignal().filter(recommendation => recommendation.id !== id);
-    this.setRecommendations(recommendations);
+  async deleteRecommendation(id: string) {
+    try {
+      await this.http.delete(`${environment.apiUrl}/recommendations/${id}`).toPromise();
+      const recommendations = this.recommendationsSignal().filter(recommendation => recommendation.id !== id);
+      this.setRecommendations(recommendations);
+    } catch (error) {
+      console.error('Error deleting recommendation:', error);
+      throw error;
+    }
   }
 
   // Utility methods
@@ -925,4 +665,47 @@ export class AdminService {
       certificates: this.certificatesSignal().length
     };
   }
+
+  // Clear all data (reset to mock data)
+  clearAllData() {
+    // localStorage.removeItem(this.storageKey); // Not using localStorage anymore
+    // this.loadMockData(); // Not using mock data
+    // this.saveToStorage(); // Not using localStorage
+    console.warn('clearAllData not implemented for API backend yet');
+  }
+
+  // Export data as JSON
+  exportData(): string {
+    const data = {
+      blogPosts: this.blogPostsSignal(),
+      skills: this.skillsSignal(),
+      workExperience: this.workExperienceSignal(),
+      education: this.educationSignal(),
+      projects: this.projectsSignal(),
+      certificates: this.certificatesSignal(),
+      about: this.aboutSignal(),
+      testimonials: this.testimonialsSignal(),
+      recommendations: this.recommendationsSignal()
+    };
+    return JSON.stringify(data, null, 2);
+  }
+
+  // Import data from JSON
+  importData(jsonString: string) {
+    try {
+      // const data = JSON.parse(jsonString);
+      // this.restoreData(data); // Not using localStorage
+      // this.saveToStorage(); // Not using localStorage
+      console.warn('importData not implemented for API backend yet');
+      return true;
+    } catch (error) {
+      console.error('Error importing data:', error);
+      return false;
+    }
+  }
+
+  // Helper methods placeholders to fix build errors if referenced elsewhere
+  private loadMockData() { console.warn('loadMockData is deprecated'); }
+  private saveToStorage() { console.warn('saveToStorage is deprecated'); }
+  private restoreData(data: any) { console.warn('restoreData is deprecated'); }
 }

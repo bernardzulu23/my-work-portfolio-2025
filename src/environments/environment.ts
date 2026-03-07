@@ -1,7 +1,14 @@
 export const environment = {
   production: false,
-  supabase: {
-    url: 'https://kckgihiaaoioqlrjywpi.supabase.co',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtja2dpaGlhYW9pb3Fscmp5d3BpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg2NTIwNjAsImV4cCI6MjA3NDIyODA2MH0.oeJ7XV-rzYj2Y5M3wlo0itUD8FtFGEh0AldWyBZAMSY'
-  }
+  database: {
+    // Railway MySQL connection - for local development, use a local MySQL server or proxy
+    // Format: mysql://user:password@host:port/database
+    host: 'yamanote.proxy.rlwy.net',
+    port: 33598,
+    username: 'root',
+    password: 'qLxsvkmrgwzeTQVDkEPeaTUVKyWTUqJG',
+    database: 'railway'
+  },
+  // API URL for backend
+  apiUrl: 'http://localhost:3000/api'
 };

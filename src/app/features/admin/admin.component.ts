@@ -1,6 +1,6 @@
 import { Router } from '@angular/router';
 import { AdminService, BlogPost, Skill, WorkExperience, Project, Certificate, About } from '../../core/services/admin.service';
-import type { Testimonial } from '../../core/types';
+import type { Testimonial, Recommendation } from '../../core/types';
 import { AuthService } from '../../core/services/auth.service';
 import { ModalComponent } from '../../shared/components/modal/modal.component';
 import { AboutFormComponent } from './components/about-form/about-form.component';
@@ -540,7 +540,7 @@ import { signal, computed, inject } from '@angular/core';
         <app-blog-form
           [blogPost]="selectedBlogPost()"
           [isEditing]="isEditingBlog()"
-          (onSubmit)="handleBlogSubmit()"
+          (onSubmit)="saveBlogPost($event)"
           (onCancel)="closeBlogModal()">
         </app-blog-form>
       </app-modal>
@@ -554,7 +554,7 @@ import { signal, computed, inject } from '@angular/core';
         <app-skill-form
           [skill]="selectedSkill()"
           [isEditing]="isEditingSkill()"
-          (onSubmit)="handleSkillSubmit()"
+          (onSubmit)="saveSkill($event)"
           (onCancel)="closeSkillModal()">
         </app-skill-form>
       </app-modal>
@@ -568,7 +568,7 @@ import { signal, computed, inject } from '@angular/core';
         <app-experience-form
           [experience]="selectedExperience()"
           [isEditing]="isEditingExperience()"
-          (onSubmit)="handleExperienceSubmit()"
+          (onSubmit)="saveExperience($event)"
           (onCancel)="closeExperienceModal()">
         </app-experience-form>
       </app-modal>
@@ -582,7 +582,7 @@ import { signal, computed, inject } from '@angular/core';
         <app-project-form
           [project]="selectedProject()"
           [isEditing]="isEditingProject()"
-          (onSubmit)="handleProjectSubmit()"
+          (onSubmit)="saveProject($event)"
           (onCancel)="closeProjectModal()">
         </app-project-form>
       </app-modal>
@@ -596,7 +596,7 @@ import { signal, computed, inject } from '@angular/core';
         <app-certificate-form
           [certificate]="selectedCertificate()"
           [isEditing]="isEditingCertificate()"
-          (onSubmit)="handleCertificateSubmit()"
+          (onSubmit)="saveCertificate($event)"
           (onCancel)="closeCertificateModal()">
         </app-certificate-form>
       </app-modal>
@@ -610,7 +610,8 @@ import { signal, computed, inject } from '@angular/core';
         <app-about-form
           [about]="selectedAbout()"
           [isEditing]="isEditingAbout()"
-          (onSubmit)="handleAboutSubmit()"
+          (onBioChange)="onBioLiveChange($event)"
+          (onSubmit)="saveAbout($event)"
           (onCancel)="closeAboutModal()">
         </app-about-form>
       </app-modal>
@@ -624,7 +625,7 @@ import { signal, computed, inject } from '@angular/core';
         <app-testimonial-form
           [testimonial]="selectedTestimonial()"
           [isEditing]="isEditingTestimonial()"
-          (onSubmit)="handleTestimonialSubmit()"
+          (onSubmit)="saveTestimonial($event)"
           (onCancel)="closeTestimonialModal()">
         </app-testimonial-form>
       </app-modal>
@@ -761,6 +762,43 @@ export class AdminComponent implements OnInit {
     this.loadData();
   }
 
+  onBioLiveChange(newBio: string) {
+    const current = this.about();
+    if (current) {
+      this.about.set({ ...current, bio: newBio });
+    }
+  }
+
+  async saveAbout(about: About) {
+    try {
+      if (about.id) {
+        await this.adminService.updateAbout(about.id, about);
+      } else {
+        await this.adminService.addAbout({
+          name: about.name,
+          title: about.title,
+          email: about.email,
+          phone: about.phone,
+          location: about.location,
+          tagline: about.tagline,
+          bio: about.bio,
+          availability: about.availability,
+          avatar: about.avatar,
+          resumeUrl: about.resumeUrl,
+          linkedinUrl: about.linkedinUrl,
+          githubUrl: about.githubUrl,
+          websiteUrl: about.websiteUrl,
+          values: about.values,
+          experience: about.experience
+        });
+      }
+    } catch (error) {
+      console.error('Error saving about:', error);
+    } finally {
+      this.handleAboutSubmit();
+    }
+  }
+
   // Blog management
   openBlogModal() {
     this.selectedBlogPost.set(null);
@@ -784,6 +822,32 @@ export class AdminComponent implements OnInit {
     // This will be handled by the form component
     this.closeBlogModal();
     this.loadData(); // Refresh data
+  }
+
+  async saveBlogPost(post: BlogPost) {
+    try {
+      if (post.id) {
+        await this.adminService.updateBlogPost(post.id, post);
+      } else {
+        await this.adminService.addBlogPost({
+          title: post.title,
+          content: post.content,
+          excerpt: post.excerpt,
+          author: post.author,
+          publishDate: post.publishDate,
+          tags: post.tags,
+          category: post.category,
+          readTime: post.readTime,
+          featured: post.featured,
+          status: post.status,
+          imageUrl: post.imageUrl
+        });
+      }
+    } catch (error) {
+      console.error('Error saving blog post:', error);
+    } finally {
+      this.handleBlogSubmit();
+    }
   }
 
   deleteBlogPost(id: string) {
@@ -817,6 +881,27 @@ export class AdminComponent implements OnInit {
     this.loadData();
   }
 
+  async saveSkill(skill: Skill) {
+    try {
+      if (skill.id) {
+        await this.adminService.updateSkill(skill.id, skill);
+      } else {
+        await this.adminService.addSkill({
+          name: skill.name,
+          category: skill.category,
+          proficiency: skill.proficiency,
+          yearsOfExperience: skill.yearsOfExperience,
+          certifications: skill.certifications,
+          projects: skill.projects
+        });
+      }
+    } catch (error) {
+      console.error('Error saving skill:', error);
+    } finally {
+      this.handleSkillSubmit();
+    }
+  }
+
   deleteSkill(id: string) {
     if (confirm('Are you sure you want to delete this skill?')) {
       this.adminService.deleteSkill(id);
@@ -846,6 +931,32 @@ export class AdminComponent implements OnInit {
   handleExperienceSubmit() {
     this.closeExperienceModal();
     this.loadData();
+  }
+
+  async saveExperience(experience: WorkExperience) {
+    try {
+      if (experience.id) {
+        await this.adminService.updateWorkExperience(experience.id, experience);
+      } else {
+        await this.adminService.addWorkExperience({
+          company: experience.company,
+          position: experience.position,
+          location: experience.location,
+          employmentType: experience.employmentType,
+          startDate: experience.startDate,
+          endDate: experience.endDate,
+          current: experience.current,
+          description: experience.description,
+          achievements: experience.achievements,
+          technologies: experience.technologies,
+          companyLogo: experience.companyLogo
+        });
+      }
+    } catch (error) {
+      console.error('Error saving experience:', error);
+    } finally {
+      this.handleExperienceSubmit();
+    }
   }
 
   deleteExperience(id: string) {
@@ -879,6 +990,30 @@ export class AdminComponent implements OnInit {
     this.loadData();
   }
 
+  async saveProject(project: Project) {
+    try {
+      if (project.id) {
+        await this.adminService.updateProject(project.id, project);
+      } else {
+        await this.adminService.addProject({
+          title: project.title,
+          description: project.description,
+          technologies: project.technologies,
+          githubUrl: project.githubUrl,
+          liveUrl: project.liveUrl,
+          imageUrl: project.imageUrl,
+          featured: project.featured,
+          category: project.category,
+          status: project.status
+        });
+      }
+    } catch (error) {
+      console.error('Error saving project:', error);
+    } finally {
+      this.handleProjectSubmit();
+    }
+  }
+
   deleteProject(id: string) {
     if (confirm('Are you sure you want to delete this project?')) {
       this.adminService.deleteProject(id);
@@ -908,6 +1043,31 @@ export class AdminComponent implements OnInit {
   handleCertificateSubmit() {
     this.closeCertificateModal();
     this.loadData();
+  }
+
+  async saveCertificate(certificate: Certificate) {
+    try {
+      if (certificate.id) {
+        await this.adminService.updateCertificate(certificate.id, certificate);
+      } else {
+        await this.adminService.addCertificate({
+          title: certificate.title,
+          issuer: certificate.issuer,
+          issueDate: certificate.issueDate,
+          expiryDate: certificate.expiryDate,
+          category: certificate.category,
+          pdfUrl: certificate.pdfUrl,
+          thumbnailUrl: certificate.thumbnailUrl,
+          verificationBadge: certificate.verificationBadge,
+          issuerVerification: certificate.issuerVerification,
+          credentialId: certificate.credentialId
+        });
+      }
+    } catch (error) {
+      console.error('Error saving certificate:', error);
+    } finally {
+      this.handleCertificateSubmit();
+    }
   }
 
   deleteCertificate(id: string) {
@@ -941,6 +1101,56 @@ export class AdminComponent implements OnInit {
   handleTestimonialSubmit() {
     this.closeTestimonialModal();
     this.loadData();
+  }
+
+  async saveTestimonial(item: Testimonial | Recommendation) {
+    try {
+      const isTestimonial = (item as any).rating !== undefined;
+      if (isTestimonial) {
+        const t = item as Testimonial;
+        if (t.id) {
+          await this.adminService.updateTestimonial(t.id, t);
+        } else {
+          await this.adminService.addTestimonial({
+            author: t.author,
+            position: t.position,
+            company: t.company,
+            content: t.content,
+            rating: t.rating,
+            date: t.date,
+            avatar: t.avatar,
+            companyLogo: t.companyLogo,
+            linkedinUrl: t.linkedinUrl,
+            verified: t.verified,
+            featured: t.featured,
+            project: t.project,
+            skills: t.skills
+          });
+        }
+      } else {
+        const r = item as any;
+        if (r.id) {
+          await this.adminService.updateRecommendation(r.id, r);
+        } else {
+          await this.adminService.addRecommendation({
+            author: r.author,
+            position: r.position,
+            company: r.company,
+            content: r.content,
+            date: r.date,
+            avatar: r.avatar,
+            companyLogo: r.companyLogo,
+            linkedinUrl: r.linkedinUrl,
+            verified: r.verified,
+            skills: r.skills
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error saving testimonial/recommendation:', error);
+    } finally {
+      this.handleTestimonialSubmit();
+    }
   }
 
   deleteTestimonial(id: string) {
