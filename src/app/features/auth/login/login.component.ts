@@ -1,147 +1,21 @@
 import { Component, signal, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { AuthService } from '../../../core/services/auth.service';
+import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
+import { AuthService, MfaMethods } from '../../../core/services/auth.service';
 import { Router } from '@angular/router';
 import { NotificationService } from '../../../shared/services/notification.service';
 import { SecurityService } from '../../../core/services/security.service';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
+import { BrandLogoComponent } from '../../../shared/components/brand-logo/brand-logo.component';
 
 @Component({
   selector: 'app-login',
   standalone: true,
   imports: [
-    CommonModule,
     ReactiveFormsModule,
-    LoadingSpinnerComponent
+    LoadingSpinnerComponent,
+    BrandLogoComponent
   ],
-  template: `
-    <div class="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
-      <div class="max-w-md w-full space-y-8">
-        <div>
-          <div class="mx-auto h-12 w-12 flex items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900">
-            <svg class="h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
-          </div>
-          <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
-            Admin Login
-          </h2>
-          <p class="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
-            Sign in to access the admin dashboard
-          </p>
-        </div>
-
-
-
-        <form class="mt-8 space-y-6" [formGroup]="loginForm" (ngSubmit)="onSubmit()">
-          <div class="rounded-md shadow-sm -space-y-px">
-            <div>
-              <label for="email" class="sr-only">Email address</label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                autocomplete="email"
-                formControlName="email"
-                class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-800 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Email address"
-                [class.border-red-300]="isFieldInvalid('email')"
-              >
-              <div *ngIf="isFieldInvalid('email')" class="text-xs text-red-600 mt-1 px-3">
-                <span *ngIf="loginForm.get('email')?.errors?.['required']">Email required</span>
-                <span *ngIf="loginForm.get('email')?.errors?.['invalidEmail']">Invalid email</span>
-                <span *ngIf="loginForm.get('email')?.errors?.['xssAttempt']">Invalid characters</span>
-              </div>
-            </div>
-            <div>
-              <label for="password" class="sr-only">Password</label>
-              <div class="relative">
-                <input
-                  id="password"
-                  name="password"
-                  [type]="showPassword() ? 'text' : 'password'"
-                  autocomplete="current-password"
-                  formControlName="password"
-                  class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-800 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm pr-10"
-                  placeholder="Password"
-                  [class.border-red-300]="isFieldInvalid('password')"
-                >
-                <button
-                  type="button"
-                  (click)="togglePasswordVisibility()"
-                  class="absolute inset-y-0 right-0 pr-3 flex items-center z-20 cursor-pointer text-gray-400 hover:text-gray-500 focus:outline-none"
-                  tabindex="-1"
-                >
-                  <svg *ngIf="!showPassword()" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                  </svg>
-                  <svg *ngIf="showPassword()" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a10.05 10.05 0 011.574-2.925m2.454-2.452A19.822 19.822 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.05 10.05 0 01-1.574 2.925M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3l18 18" />
-                  </svg>
-                </button>
-              </div>
-              <div *ngIf="isFieldInvalid('password')" class="text-xs text-red-600 mt-1 px-3">
-                <span *ngIf="loginForm.get('password')?.errors?.['required']">Password required</span>
-                <span *ngIf="loginForm.get('password')?.errors?.['xssAttempt']">Invalid characters</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Error Messages -->
-          <div *ngIf="loginError()" class="rounded-md bg-red-50 dark:bg-red-900/20 p-4">
-            <div class="flex">
-              <div class="flex-shrink-0">
-                <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
-                </svg>
-              </div>
-              <div class="ml-3">
-                <p class="text-sm text-red-800 dark:text-red-200">{{ loginError() }}</p>
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <button
-              type="submit"
-              [disabled]="loginForm.invalid || isLoading()"
-              class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              <span class="absolute left-0 inset-y-0 flex items-center pl-3" *ngIf="isLoading()">
-                <app-loading-spinner class="h-4 w-4"></app-loading-spinner>
-              </span>
-              <span [class]="isLoading() ? 'ml-6' : ''">
-                {{ isLoading() ? 'Signing in...' : 'Sign in' }}
-              </span>
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  `,
-  styles: [`
-    .form-field-error {
-      border-color: #fca5a5;
-    }
-    
-    button {
-      pointer-events: auto !important;
-      position: relative;
-    }
-    
-    form {
-      position: relative;
-      z-index: 10;
-    }
-    
-    input {
-      position: relative;
-      z-index: 10;
-    }
-  `]
+  templateUrl: './login.component.html'
 })
 export class LoginComponent {
   private fb = inject(FormBuilder);
@@ -151,25 +25,35 @@ export class LoginComponent {
   private securityService = inject(SecurityService);
 
   loginForm: FormGroup;
+  totpForm: FormGroup;
+  recoveryForm: FormGroup;
   isLoading = signal(false);
+  passkeyLoading = signal(false);
   loginError = signal<string | null>(null);
   failedAttempts = signal(0);
   lockoutTime = signal<number | null>(null);
   showPassword = signal(false);
+  step = signal<'password' | 'mfa'>('password');
+  methods = signal<MfaMethods>({ totp: false, passkey: false, recovery: false });
+  mfaMode = signal<'totp' | 'recovery'>('totp');
+  supportsPasskeys = this.authService.supportsPasskeys();
 
   constructor() {
     this.loginForm = this.fb.group({
       email: ['', [Validators.required, this.emailValidator.bind(this)]],
       password: ['', [Validators.required, this.passwordValidator.bind(this)]]
     });
+    this.totpForm = this.fb.group({
+      code: ['', [Validators.required, Validators.pattern(/^\d{6}$/)]]
+    });
+    this.recoveryForm = this.fb.group({
+      code: ['', [Validators.required, Validators.minLength(8)]]
+    });
 
-    // Redirect if already authenticated
-    if (this.authService.isAuthenticated()) {
-      if (this.authService.isAdmin()) {
-        this.router.navigate(['/admin']);
-      } else {
-        this.router.navigate(['/admin-setup']);
-      }
+    if (this.authService.canAccessAdmin()) {
+      void this.router.navigate(['/admin']);
+    } else if (this.authService.needsSetup()) {
+      void this.router.navigate(['/admin/setup']);
     }
   }
 
@@ -178,14 +62,18 @@ export class LoginComponent {
     return !!(field && field.invalid && (field.dirty || field.touched));
   }
 
+  fieldHasError(fieldName: string, errorKey: string): boolean {
+    const errors = this.loginForm.get(fieldName)?.errors;
+    return !!errors && Object.prototype.hasOwnProperty.call(errors, errorKey);
+  }
+
   togglePasswordVisibility() {
     this.showPassword.update(value => !value);
   }
 
   async onSubmit() {
-    // Check if locked out
-    if (this.lockoutTime() && Date.now() < this.lockoutTime()!) {
-      const remainingSeconds = Math.ceil((this.lockoutTime()! - Date.now()) / 1000);
+    const remainingSeconds = this.remainingLockoutSeconds();
+    if (remainingSeconds > 0) {
       this.loginError.set(`Too many failed attempts. Please try again in ${remainingSeconds} seconds.`);
       return;
     }
@@ -203,55 +91,122 @@ export class LoginComponent {
     try {
       const result = await this.authService.signIn(email, password);
 
-      if (result.success) {
-        this.notificationService.success('Success', 'Successfully logged in!');
-
-        // Reset failed attempts on success
-        this.failedAttempts.set(0);
-        this.lockoutTime.set(null);
-
-        if (this.authService.isAdmin()) {
-          this.router.navigate(['/admin']);
-        } else {
-          this.router.navigate(['/admin-setup']);
-        }
-      } else {
-        // Use generic error message for security
-        this.failedAttempts.set(this.failedAttempts() + 1);
-
-        // Lock out after 5 failed attempts
-        if (this.failedAttempts() >= 5) {
-          this.lockoutTime.set(Date.now() + 60000); // 1 minute lockout
-          this.loginError.set('Too many failed attempts. Please try again in 60 seconds.');
-        } else {
-          this.loginError.set('Invalid email or password. Please try again.');
-        }
-
-        // Log specific error for debugging (server-side logging is better)
-        console.error('Login failed:', result.error);
+      if (result.mfaRequired) {
+        this.step.set('mfa');
+        this.methods.set(result.methods || { totp: false, passkey: false, recovery: false });
+        this.mfaMode.set(result.methods?.totp ? 'totp' : 'recovery');
+        this.notificationService.info('Additional verification', 'Enter your second factor to finish signing in.');
+        return;
       }
-    } catch (error) {
-      console.error('Login error:', error);
+
+      if (result.success) {
+        this.finishLogin();
+        return;
+      }
+
+      this.handleFailedPassword();
+    } catch {
       this.loginError.set('Unable to sign in. Please try again later.');
     } finally {
       this.isLoading.set(false);
     }
   }
 
+  async onVerifyTotp() {
+    if (this.totpForm.invalid) return;
+    await this.completeMfa(this.totpForm.value.code, 'totp');
+  }
+
+  async onVerifyRecovery() {
+    if (this.recoveryForm.invalid) return;
+    await this.completeMfa(this.recoveryForm.value.code, 'recovery');
+  }
+
+  async onPasskeyLogin(usePendingMfa: boolean) {
+    this.passkeyLoading.set(true);
+    this.loginError.set(null);
+    try {
+      const result = await this.authService.loginWithPasskey(usePendingMfa);
+      if (result.success) {
+        this.finishLogin();
+      } else {
+        this.loginError.set(result.error || 'Passkey sign in failed');
+      }
+    } finally {
+      this.passkeyLoading.set(false);
+    }
+  }
+
+  toggleRecovery() {
+    this.mfaMode.update((mode) => (mode === 'recovery' ? 'totp' : 'recovery'));
+    this.loginError.set(null);
+  }
+
+  backToPassword() {
+    this.authService.cancelMfa();
+    this.step.set('password');
+    this.loginError.set(null);
+  }
+
+  private handleFailedPassword() {
+    const attempts = this.failedAttempts() + 1;
+    this.failedAttempts.set(attempts);
+
+    if (attempts >= 5) {
+      this.lockoutTime.set(Date.now() + 60000);
+      this.loginError.set('Too many failed attempts. Please try again in 60 seconds.');
+      return;
+    }
+
+    this.loginError.set('Invalid email or password. Please try again.');
+  }
+
+  private remainingLockoutSeconds(): number {
+    const until = this.lockoutTime();
+    if (until === null) {
+      return 0;
+    }
+    return Math.max(0, Math.ceil((until - Date.now()) / 1000));
+  }
+
+  private async completeMfa(code: string, method: 'totp' | 'recovery') {
+    this.isLoading.set(true);
+    this.loginError.set(null);
+    try {
+      const result = await this.authService.verifyMfaCode(code, method);
+      if (result.success) {
+        this.finishLogin();
+      } else {
+        this.loginError.set(result.error || 'Invalid verification code');
+      }
+    } finally {
+      this.isLoading.set(false);
+    }
+  }
+
+  private finishLogin() {
+    this.failedAttempts.set(0);
+    this.lockoutTime.set(null);
+    if (this.authService.needsSetup()) {
+      this.notificationService.info('Secure your account', 'Change the seeded password, then add an authenticator and passkey.');
+      void this.router.navigate(['/admin/setup']);
+      return;
+    }
+    this.notificationService.success('Success', 'Successfully logged in!');
+    void this.router.navigate([this.authService.isAdmin() ? '/admin' : '/']);
+  }
+
   private markFormGroupTouched() {
     Object.keys(this.loginForm.controls).forEach(key => {
-      const control = this.loginForm.get(key);
-      control?.markAsTouched();
+      this.loginForm.get(key)?.markAsTouched();
     });
   }
 
-  emailValidator(control: any) {
+  emailValidator(control: AbstractControl): ValidationErrors | null {
     const email = control.value;
     if (!email) return null;
 
-    const sanitizedEmail = this.securityService.sanitizeInput(email);
-
-    if (sanitizedEmail !== email) {
+    if (this.securityService.sanitizeInput(email) !== email) {
       return { xssAttempt: true };
     }
 
@@ -262,17 +217,7 @@ export class LoginComponent {
     return null;
   }
 
-  passwordValidator(control: any) {
-    const password = control.value;
-    if (!password) return null;
-
-    const sanitizedPassword = this.securityService.sanitizeInput(password);
-
-    if (sanitizedPassword !== password) {
-      return { xssAttempt: true };
-    }
-
-    // No password strength validation for login
+  passwordValidator(_control: AbstractControl): ValidationErrors | null {
     return null;
   }
 }

@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { CanActivate, Router } from '@angular/router';
-import { Observable, map, take } from 'rxjs';
-import { AuthService, AuthUser } from '../services/auth.service';
+import { Observable, from, map } from 'rxjs';
+import { AuthService } from '../services/auth.service';
 import { SecurityService } from '../services/security.service';
 
 @Injectable({
@@ -14,48 +14,45 @@ export class AuthGuard implements CanActivate {
     private router: Router
   ) {}
 
-  canActivate(): Observable<boolean> | boolean {
-    return this.authService.user$.pipe(
-      take(1),
-      map(user => {
-        // Check if user is authenticated and has admin role
-        if (user && user.role === 'admin') {
-          // Additional security checks
-          const clientIP = this.getClientIdentifier();
-
-          // Check rate limiting status
-          if (this.securityService.isRateLimited(clientIP)) {
-            console.warn('Rate limit exceeded for user:', user.email);
-            // Log the security event
-            this.securityService.logSecurityEvent({
-              type: 'rate_limit_exceeded',
-              timestamp: new Date(),
-              details: `Rate limit exceeded during admin access for ${user.email}`
-            });
-          }
-
-          return true;
-        } else {
-          // Log failed access attempt
-          const clientIP = this.getClientIdentifier();
-          this.securityService.logSecurityEvent({
-            type: 'suspicious_activity',
-            timestamp: new Date(),
-            details: `Unauthorized access attempt to admin area from ${clientIP}`
-          });
-
-          // Redirect to login if not authenticated or not admin
-          this.router.navigate(['/login']);
-          return false;
-        }
-      })
-    );
+  canActivate(): Observable<boolean> {
+    return from(this.checkAccess());
   }
 
-  private getClientIdentifier(): string {
-    // In a real application, this would be provided by the server
-    // For demo purposes, we'll use a hash of the user agent
-    return btoa(navigator.userAgent).substring(0, 16);
+  private async checkAccess(): Promise<boolean> {
+    const clientId = this.securityService.generateClientId();
+
+    if (this.securityService.isRateLimited(clientId)) {
+      this.securityService.logSecurityEvent({
+        type: 'rate_limit_exceeded',
+        timestamp: new Date(),
+        details: `Rate limit exceeded during admin access from ${clientId}`
+      });
+      this.router.navigate(['/login']);
+      return false;
+    }
+
+    const sessionValid = await this.authService.validateSession();
+    if (!sessionValid) {
+      this.securityService.logSecurityEvent({
+        type: 'suspicious_activity',
+        timestamp: new Date(),
+        details: `Unauthorized access attempt to admin area from ${clientId}`
+      });
+      this.router.navigate(['/login']);
+      return false;
+    }
+
+    if (this.authService.needsSetup()) {
+      this.router.navigate(['/admin/setup']);
+      return false;
+    }
+
+    if (!this.authService.canAccessAdmin()) {
+      this.router.navigate(['/login']);
+      return false;
+    }
+
+    return true;
   }
 }
 
@@ -68,16 +65,48 @@ export class AdminGuard implements CanActivate {
     private router: Router
   ) {}
 
-  canActivate(): Observable<boolean> | boolean {
-    return this.authService.user$.pipe(
-      take(1),
-      map(user => {
-        if (user && user.role === 'admin') {
-          return true;
-        } else {
+  canActivate(): Observable<boolean> {
+    return from(this.authService.validateSession()).pipe(
+      map((valid) => {
+        if (!valid) {
           this.router.navigate(['/login']);
           return false;
         }
+        if (this.authService.needsSetup()) {
+          this.router.navigate(['/admin/setup']);
+          return false;
+        }
+        if (this.authService.canAccessAdmin()) {
+          return true;
+        }
+        this.router.navigate(['/login']);
+        return false;
+      })
+    );
+  }
+}
+
+@Injectable({
+  providedIn: 'root'
+})
+export class SetupGuard implements CanActivate {
+  constructor(
+    private authService: AuthService,
+    private router: Router
+  ) {}
+
+  canActivate(): Observable<boolean> {
+    return from(this.authService.validateSession()).pipe(
+      map((valid) => {
+        if (!valid) {
+          this.router.navigate(['/login']);
+          return false;
+        }
+        if (this.authService.canAccessAdmin()) {
+          this.router.navigate(['/admin']);
+          return false;
+        }
+        return true;
       })
     );
   }
@@ -92,18 +121,18 @@ export class LoginGuard implements CanActivate {
     private router: Router
   ) {}
 
-  canActivate(): Observable<boolean> | boolean {
-    return this.authService.user$.pipe(
-      take(1),
-      map(user => {
-        if (user && user.role === 'admin') {
-          // If already logged in as admin, redirect to admin dashboard
+  canActivate(): Observable<boolean> {
+    return from(this.authService.validateSession()).pipe(
+      map((valid) => {
+        if (valid && this.authService.canAccessAdmin()) {
           this.router.navigate(['/admin']);
           return false;
-        } else {
-          // Allow access to login page
-          return true;
         }
+        if (valid && this.authService.needsSetup()) {
+          this.router.navigate(['/admin/setup']);
+          return false;
+        }
+        return true;
       })
     );
   }

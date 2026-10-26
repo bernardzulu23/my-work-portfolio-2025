@@ -116,46 +116,35 @@ export class SecurityService {
       errors.push('Password must be at least 8 characters long');
     } else {
       score += 1;
-      if (password.length >= 12) score += 1; // Bonus for longer passwords
+      if (password.length >= 12) score += 1;
     }
 
-    /* 
-    // Relaxed for local dev/admin demo
-    // Uppercase letter check
     if (!/[A-Z]/.test(password)) {
       errors.push('Password must contain at least one uppercase letter');
     } else {
       score += 1;
     }
 
-    // Lowercase letter check
     if (!/[a-z]/.test(password)) {
       errors.push('Password must contain at least one lowercase letter');
     } else {
       score += 1;
     }
 
-    // Number check
     if (!/\d/.test(password)) {
       errors.push('Password must contain at least one number');
     } else {
       score += 1;
     }
 
-    // Special character check
     if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
       errors.push('Password must contain at least one special character');
     } else {
       score += 1;
-    } 
-    */
-    
-    // Minimal check for dev
-    if (password.length > 0) score = 5;
+    }
 
-    // No common patterns
     if (this.hasCommonPatterns(password)) {
-      // errors.push('Password contains common patterns'); // Allow common patterns for demo admin123
+      errors.push('Password contains common patterns');
       score = Math.max(0, score - 1);
     }
 
@@ -315,7 +304,7 @@ export class SecurityService {
     this.logSecurityEvent({
       type: 'login_attempt',
       timestamp: new Date(),
-      details: `Login attempt ${success ? 'succeeded' : 'failed'} for ${email || 'unknown'} from client ${clientId}`,
+      details: `Login attempt ${success ? 'succeeded' : 'failed'} from client ${clientId}`,
       clientId,
       severity: success ? 'low' : 'medium'
     });
@@ -332,7 +321,7 @@ export class SecurityService {
 
     // In production, you might want to send critical events to a monitoring service
     if (event.severity === 'critical' || event.severity === 'high') {
-      console.warn('Security Event:', event);
+      console.warn('Security Event:', event.type, event.severity);
     }
   }
 
@@ -377,8 +366,29 @@ export class SecurityService {
     return btoa(fingerprint + sessionId).slice(0, 32);
   }
 
+  isSafeHttpUrl(value: string | null | undefined): boolean {
+    if (!value || typeof value !== 'string') return false;
+    const trimmed = value.trim();
+    if (!trimmed || trimmed.startsWith('//') || trimmed.includes('\\')) return false;
+    if (trimmed.startsWith('/') && !trimmed.startsWith('//')) {
+      return !/[\s<>]/.test(trimmed) && !trimmed.includes('://');
+    }
+    try {
+      const parsed = new URL(trimmed);
+      return parsed.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  }
+
+  openSafeUrl(url: string | null | undefined): boolean {
+    if (!this.isSafeHttpUrl(url) || !url) return false;
+    window.open(url, '_blank', 'noopener,noreferrer');
+    return true;
+  }
+
   private generateRandomId(): string {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2);
+    return crypto.randomUUID();
   }
 
   private cleanupExpiredEntries(): void {

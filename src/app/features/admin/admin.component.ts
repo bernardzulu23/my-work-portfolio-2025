@@ -1,18 +1,20 @@
 import { Router } from '@angular/router';
 import { EducationFormComponent } from './components/education-form/education-form.component';
-import { AdminService, BlogPost, Skill, WorkExperience, Project, Certificate, About, Education, ContactMessage } from '../../core/services/admin.service';
+import { SecuritySettingsComponent } from './components/security-settings/security-settings.component';
+import { AdminService, BlogPost, Skill, WorkExperience, Project, Certificate, About, Education, ContactMessage, ServiceOffering } from '../../core/services/admin.service';
 import type { Testimonial, Recommendation } from '../../core/types';
 import { AuthService } from '../../core/services/auth.service';
 import { ModalComponent } from '../../shared/components/modal/modal.component';
 import { AboutFormComponent } from './components/about-form/about-form.component';
+import { CvImportComponent } from './components/cv-import/cv-import.component';
 import { BlogFormComponent } from './components/blog-form/blog-form.component';
 import { SkillFormComponent } from './components/skill-form/skill-form.component';
 import { ExperienceFormComponent } from './components/experience-form/experience-form.component';
 import { ProjectFormComponent } from './components/project-form/project-form.component';
+import { ServiceFormComponent } from './components/service-form/service-form.component';
 import { CertificateFormComponent } from './components/certificate-form/certificate-form.component';
 import { TestimonialFormComponent } from './components/testimonial-form/testimonial-form.component';
 import { NotificationService } from '../../shared/services/notification.service';
-import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
 import { Component, OnInit } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { ConfirmationDialogComponent } from '../../shared/components/confirmation-dialog/confirmation-dialog.component';
@@ -26,38 +28,45 @@ import { signal, computed, inject } from '@angular/core';
     DatePipe,
     ModalComponent,
     AboutFormComponent,
+    CvImportComponent,
     BlogFormComponent,
     SkillFormComponent,
     ExperienceFormComponent,
     ProjectFormComponent,
+    ServiceFormComponent,
     CertificateFormComponent,
     TestimonialFormComponent,
     EducationFormComponent,
-    LoadingSpinnerComponent
+    SecuritySettingsComponent,
   ],
   template: `
-    <div class="container mx-auto px-4 py-20">
+    <div class="container mx-auto px-4 py-12 md:py-20">
       <!-- Admin Header -->
-      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-8">
-        <div class="flex justify-between items-center">
-          <div>
-            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Admin Dashboard</h1>
-            <p class="text-gray-600 dark:text-gray-400 mt-1">
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 sm:p-6 mb-8">
+        <div class="flex flex-col gap-4 lg:flex-row lg:justify-between lg:items-center">
+          <div class="min-w-0">
+            <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Admin Dashboard</h1>
+            <p class="text-gray-600 dark:text-gray-400 mt-1 break-all">
               Welcome back, {{ authService.getUserEmail() }}!
             </p>
           </div>
-          <div class="flex items-center space-x-4">
-            <div class="flex items-center space-x-3">
-              <div class="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
+          <div class="flex flex-wrap items-center gap-3">
+            <div class="flex items-center space-x-3 min-w-0">
+              <div class="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center shrink-0">
                 <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
                 </svg>
               </div>
-              <div class="text-right">
-                <div class="text-sm font-medium text-gray-900 dark:text-white">{{ authService.getUserEmail() }}</div>
+              <div class="text-left sm:text-right min-w-0">
+                <div class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ authService.getUserEmail() }}</div>
                 <div class="text-xs text-gray-500 dark:text-gray-400">Administrator</div>
               </div>
             </div>
+            <button
+              (click)="openSecurity()"
+              class="bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-100 px-4 py-2 rounded-md transition-colors">
+              Security
+            </button>
             <button
               (click)="logout()"
               [disabled]="isLoggingOut()"
@@ -72,6 +81,17 @@ import { signal, computed, inject } from '@angular/core';
             </button>
           </div>
         </div>
+      </div>
+
+      <div *ngIf="authService.user()?.mfa && !authService.user()?.mfa?.enrolled"
+           class="mb-6 rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <p class="text-sm text-amber-900 dark:text-amber-100">
+          Add an authenticator app or passkey so admin sign in requires a second factor.
+        </p>
+        <button type="button" (click)="openSecurity()"
+                class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-md text-sm">
+          Set up MFA
+        </button>
       </div>
 
       <div class="text-center mb-16">
@@ -103,7 +123,7 @@ import { signal, computed, inject } from '@angular/core';
       <!-- Content Management Tabs -->
       <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg">
         <div class="border-b border-gray-200 dark:border-gray-700">
-          <nav class="-mb-px flex space-x-8 px-6" aria-label="Tabs">
+          <nav class="-mb-px flex gap-4 sm:gap-8 px-4 sm:px-6 overflow-x-auto" aria-label="Tabs">
             <button
               (click)="activeTab.set('about')"
               [class]="getTabClass('about')"
@@ -141,6 +161,12 @@ import { signal, computed, inject } from '@angular/core';
               Projects
             </button>
             <button
+              (click)="activeTab.set('services')"
+              [class]="getTabClass('services')"
+              class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+              Services
+            </button>
+            <button
               (click)="activeTab.set('certificates')"
               [class]="getTabClass('certificates')"
               class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
@@ -162,13 +188,13 @@ import { signal, computed, inject } from '@angular/core';
         </div>
 
         <!-- Tab Content -->
-        <div class="p-6">
+        <div class="p-4 sm:p-6">
           <!-- About Tab -->
           <div *ngIf="activeTab() === 'about'" class="space-y-4">
-            <div class="flex justify-between items-center">
-              <h2 class="text-2xl font-bold">About Information</h2>
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+              <h2 class="text-xl sm:text-2xl font-bold">About Information</h2>
               <button
-                (click)="openAboutModal()"
+                (click)="onAboutAction()"
                 class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors">
                 {{about() ? 'Edit About' : 'Add About'}}
               </button>
@@ -203,20 +229,12 @@ import { signal, computed, inject } from '@angular/core';
                   </div>
                 </div>
               </div>
-              <div *ngIf="about()!.experience && about()!.experience.length > 0" class="mt-6">
-                <h4 class="font-semibold mb-4">Experience Timeline</h4>
+              <div *ngIf="workExperience().length > 0" class="mt-6">
+                <h4 class="font-semibold mb-4">Work experience (also shown as About activities)</h4>
                 <div class="space-y-3">
-                  <div *ngFor="let exp of about()!.experience" class="border-l-4 border-blue-500 pl-4">
-                    <div class="flex justify-between items-start">
-                      <div>
-                        <h5 class="font-medium">{{exp.title}} at {{exp.company}}</h5>
-                        <p class="text-sm text-gray-600 dark:text-gray-400">{{exp.year}}</p>
-                        <p class="text-sm mt-1">{{exp.description}}</p>
-                        <p *ngIf="exp.technologies" class="text-sm text-gray-500 mt-1">
-                          Technologies: {{exp.technologies.join(', ')}}
-                        </p>
-                      </div>
-                    </div>
+                  <div *ngFor="let exp of workExperience()" class="border-l-4 border-blue-500 pl-4">
+                    <h5 class="font-medium">{{exp.position}} at {{exp.company}}</h5>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">{{exp.startDate | date:'yyyy'}}</p>
                   </div>
                 </div>
               </div>
@@ -251,11 +269,12 @@ import { signal, computed, inject } from '@angular/core';
                 </button>
               </div>
             </ng-template>
+            <app-cv-import (applied)="onCvImported()"></app-cv-import>
           </div>
 
           <!-- Blog Posts Tab -->
           <div *ngIf="activeTab() === 'blog'" class="space-y-4">
-            <div class="flex justify-between items-center">
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
               <h2 class="text-2xl font-bold">Blog Posts</h2>
               <button
                 (click)="openBlogModal()"
@@ -298,7 +317,7 @@ import { signal, computed, inject } from '@angular/core';
 
           <!-- Skills Tab -->
           <div *ngIf="activeTab() === 'skills'" class="space-y-4">
-            <div class="flex justify-between items-center">
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
               <h2 class="text-2xl font-bold">Skills</h2>
               <button
                 (click)="openSkillModal()"
@@ -341,7 +360,7 @@ import { signal, computed, inject } from '@angular/core';
 
           <!-- Experience Tab -->
           <div *ngIf="activeTab() === 'experience'" class="space-y-4">
-            <div class="flex justify-between items-center">
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
               <h2 class="text-2xl font-bold">Work Experience</h2>
               <button
                 (click)="openExperienceModal()"
@@ -392,7 +411,7 @@ import { signal, computed, inject } from '@angular/core';
 
           <!-- Projects Tab -->
           <div *ngIf="activeTab() === 'projects'" class="space-y-4">
-            <div class="flex justify-between items-center">
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
               <h2 class="text-2xl font-bold">Projects</h2>
               <button
                 (click)="openProjectModal()"
@@ -419,8 +438,10 @@ import { signal, computed, inject } from '@angular/core';
                     </div>
                     <div *ngIf="project.githubUrl || project.liveUrl" class="mt-2 space-x-4">
                       <a *ngIf="project.githubUrl" [href]="project.githubUrl" target="_blank"
+                         rel="noopener noreferrer"
                          class="text-blue-600 hover:underline text-sm">GitHub</a>
                       <a *ngIf="project.liveUrl" [href]="project.liveUrl" target="_blank"
+                         rel="noopener noreferrer"
                          class="text-blue-600 hover:underline text-sm">Live Demo</a>
                     </div>
                   </div>
@@ -441,9 +462,40 @@ import { signal, computed, inject } from '@angular/core';
             </div>
           </div>
 
+          <div *ngIf="activeTab() === 'services'" class="space-y-4">
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+              <h2 class="text-2xl font-bold">Services</h2>
+              <button
+                (click)="openServiceModal()"
+                class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md transition-colors">
+                Add Service
+              </button>
+            </div>
+            <div class="grid gap-4">
+              <div *ngFor="let service of offerings()" class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                <div class="flex justify-between items-start">
+                  <div class="flex-1">
+                    <h3 class="text-lg font-semibold">{{ service.title }}</h3>
+                    <p class="text-gray-600 dark:text-gray-400">{{ service.description }}</p>
+                    <div class="flex items-center space-x-4 mt-2 text-sm">
+                      <span>{{ service.category }}</span>
+                      <span [class]="service.status === 'active' ? 'text-green-600' : 'text-gray-600'">{{ service.status }}</span>
+                      <span *ngIf="service.featured" class="text-yellow-600">★ Featured</span>
+                      <span *ngIf="service.popular" class="text-blue-600">Popular</span>
+                    </div>
+                  </div>
+                  <div class="flex space-x-2">
+                    <button (click)="editService(service)" class="text-blue-600 hover:text-blue-800 px-3 py-1 rounded">Edit</button>
+                    <button (click)="deleteService(service.id)" class="text-red-600 hover:text-red-800 px-3 py-1 rounded">Delete</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Education Tab -->
           <div *ngIf="activeTab() === 'education'" class="space-y-4">
-            <div class="flex justify-between items-center">
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
               <h2 class="text-2xl font-bold">Education</h2>
               <button (click)="openEducationModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md">
                 Add Education
@@ -469,7 +521,7 @@ import { signal, computed, inject } from '@angular/core';
 
           <!-- Certificates Tab -->
           <div *ngIf="activeTab() === 'certificates'" class="space-y-4">
-            <div class="flex justify-between items-center">
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
               <h2 class="text-2xl font-bold">Certificates</h2>
               <button
                 (click)="openCertificateModal()"
@@ -495,8 +547,10 @@ import { signal, computed, inject } from '@angular/core';
                     </div>
                     <div class="mt-2 space-x-4">
                       <a [href]="cert.pdfUrl" target="_blank"
+                         rel="noopener noreferrer"
                          class="text-blue-600 hover:underline text-sm">View PDF</a>
                       <a *ngIf="cert.issuerVerification" [href]="cert.issuerVerification" target="_blank"
+                         rel="noopener noreferrer"
                          class="text-blue-600 hover:underline text-sm">Verify</a>
                     </div>
                   </div>
@@ -519,7 +573,7 @@ import { signal, computed, inject } from '@angular/core';
 
           <!-- Testimonials Tab -->
           <div *ngIf="activeTab() === 'testimonials'" class="space-y-4">
-            <div class="flex justify-between items-center">
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
               <h2 class="text-2xl font-bold">Testimonials</h2>
               <button
                 (click)="openTestimonialModal()"
@@ -588,7 +642,7 @@ import { signal, computed, inject } from '@angular/core';
 
           <!-- Contact Messages Tab -->
           <div *ngIf="activeTab() === 'contact'" class="space-y-4">
-            <div class="flex justify-between items-center">
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
               <h2 class="text-2xl font-bold">Contact Messages</h2>
               <button (click)="loadContactMessages()" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md">
                 Refresh
@@ -615,8 +669,8 @@ import { signal, computed, inject } from '@angular/core';
       <app-modal
         [isOpen]="blogModalOpen()"
         title="Blog Post"
-        (onClose)="closeBlogModal()"
-        (onConfirm)="handleBlogSubmit()">
+        (closed)="closeBlogModal()"
+        (confirmed)="handleBlogSubmit()">
         <app-blog-form
           [blogPost]="selectedBlogPost()"
           [isEditing]="isEditingBlog()"
@@ -629,8 +683,8 @@ import { signal, computed, inject } from '@angular/core';
       <app-modal
         [isOpen]="skillModalOpen()"
         title="Skill"
-        (onClose)="closeSkillModal()"
-        (onConfirm)="handleSkillSubmit()">
+        (closed)="closeSkillModal()"
+        (confirmed)="handleSkillSubmit()">
         <app-skill-form
           [skill]="selectedSkill()"
           [isEditing]="isEditingSkill()"
@@ -643,8 +697,8 @@ import { signal, computed, inject } from '@angular/core';
       <app-modal
         [isOpen]="experienceModalOpen()"
         title="Work Experience"
-        (onClose)="closeExperienceModal()"
-        (onConfirm)="handleExperienceSubmit()">
+        (closed)="closeExperienceModal()"
+        (confirmed)="handleExperienceSubmit()">
         <app-experience-form
           [experience]="selectedExperience()"
           [isEditing]="isEditingExperience()"
@@ -657,8 +711,8 @@ import { signal, computed, inject } from '@angular/core';
       <app-modal
         [isOpen]="educationModalOpen()"
         title="Education"
-        (onClose)="closeEducationModal()"
-        (onConfirm)="handleEducationSubmit()">
+        (closed)="closeEducationModal()"
+        (confirmed)="handleEducationSubmit()">
         <app-education-form
           [education]="selectedEducation()"
           [isEditing]="isEditingEducation()"
@@ -671,8 +725,8 @@ import { signal, computed, inject } from '@angular/core';
       <app-modal
         [isOpen]="projectModalOpen()"
         title="Project"
-        (onClose)="closeProjectModal()"
-        (onConfirm)="handleProjectSubmit()">
+        (closed)="closeProjectModal()"
+        (confirmed)="handleProjectSubmit()">
         <app-project-form
           [project]="selectedProject()"
           [isEditing]="isEditingProject()"
@@ -681,12 +735,25 @@ import { signal, computed, inject } from '@angular/core';
         </app-project-form>
       </app-modal>
 
+      <app-modal
+        [isOpen]="serviceModalOpen()"
+        title="Service"
+        (closed)="closeServiceModal()"
+        (confirmed)="handleServiceSubmit()">
+        <app-service-form
+          [service]="selectedService()"
+          [isEditing]="isEditingService()"
+          (onSubmit)="saveService($event)"
+          (onCancel)="closeServiceModal()">
+        </app-service-form>
+      </app-modal>
+
       <!-- Certificate Modal -->
       <app-modal
         [isOpen]="certificateModalOpen()"
         title="Certificate"
-        (onClose)="closeCertificateModal()"
-        (onConfirm)="handleCertificateSubmit()">
+        (closed)="closeCertificateModal()"
+        (confirmed)="handleCertificateSubmit()">
         <app-certificate-form
           [certificate]="selectedCertificate()"
           [isEditing]="isEditingCertificate()"
@@ -699,8 +766,8 @@ import { signal, computed, inject } from '@angular/core';
       <app-modal
         [isOpen]="aboutModalOpen()"
         title="About Information"
-        (onClose)="closeAboutModal()"
-        (onConfirm)="handleAboutSubmit()">
+        (closed)="closeAboutModal()"
+        (confirmed)="handleAboutSubmit()">
         <app-about-form
           [about]="selectedAbout()"
           [isEditing]="isEditingAbout()"
@@ -710,12 +777,20 @@ import { signal, computed, inject } from '@angular/core';
         </app-about-form>
       </app-modal>
 
+      <app-modal
+        [isOpen]="securityModalOpen()"
+        title="Account security"
+        [showFooter]="false"
+        (closed)="closeSecurity()">
+        <app-security-settings [isOpen]="securityModalOpen()"></app-security-settings>
+      </app-modal>
+
       <!-- Testimonial Modal -->
       <app-modal
         [isOpen]="testimonialModalOpen()"
         title="Testimonial"
-        (onClose)="closeTestimonialModal()"
-        (onConfirm)="handleTestimonialSubmit()">
+        (closed)="closeTestimonialModal()"
+        (confirmed)="handleTestimonialSubmit()">
         <app-testimonial-form
           [testimonial]="selectedTestimonial()"
           [isEditing]="isEditingTestimonial()"
@@ -749,14 +824,22 @@ import { signal, computed, inject } from '@angular/core';
 })
 export class AdminComponent implements OnInit {
   protected authService = inject(AuthService);
+  private notificationService = inject(NotificationService);
 
   constructor(
     private router: Router,
     private adminService: AdminService
   ) {}
 
+  private saveError(label: string) {
+    this.notificationService.error(
+      'Save failed',
+      `Could not save ${label}. The form is still open so you can retry.`
+    );
+  }
+
   // Active tab state
-  activeTab = signal<'about' | 'blog' | 'skills' | 'experience' | 'education' | 'projects' | 'certificates' | 'testimonials' | 'contact'>('about');
+  activeTab = signal<'about' | 'blog' | 'skills' | 'experience' | 'education' | 'projects' | 'services' | 'certificates' | 'testimonials' | 'contact'>('about');
 
   // Modal states
   aboutModalOpen = signal(false);
@@ -765,8 +848,10 @@ export class AdminComponent implements OnInit {
   experienceModalOpen = signal(false);
   educationModalOpen = signal(false);
   projectModalOpen = signal(false);
+  serviceModalOpen = signal(false);
   certificateModalOpen = signal(false);
   testimonialModalOpen = signal(false);
+  securityModalOpen = signal(false);
 
   // Selected items for editing
   selectedAbout = signal<About | null>(null);
@@ -775,6 +860,7 @@ export class AdminComponent implements OnInit {
   selectedExperience = signal<WorkExperience | null>(null);
   selectedEducation = signal<Education | null>(null);
   selectedProject = signal<Project | null>(null);
+  selectedService = signal<ServiceOffering | null>(null);
   selectedCertificate = signal<Certificate | null>(null);
 
   // Edit states
@@ -784,6 +870,7 @@ export class AdminComponent implements OnInit {
   isEditingExperience = signal(false);
   isEditingEducation = signal(false);
   isEditingProject = signal(false);
+  isEditingService = signal(false);
   isEditingCertificate = signal(false);
 
   // Logout state
@@ -796,6 +883,7 @@ export class AdminComponent implements OnInit {
   workExperience = signal<WorkExperience[]>([]);
   education = signal<Education[]>([]);
   projects = signal<Project[]>([]);
+  offerings = signal<ServiceOffering[]>([]);
   certificates = signal<Certificate[]>([]);
   testimonials = signal<Testimonial[]>([]);
   recommendations = signal<Recommendation[]>([]);
@@ -818,6 +906,7 @@ export class AdminComponent implements OnInit {
     this.workExperience.set(this.adminService.getWorkExperience());
     this.education.set(this.adminService.getEducation());
     this.projects.set(this.adminService.getProjects());
+    this.offerings.set(this.adminService.getServices());
     this.certificates.set(this.adminService.getCertificates());
     this.testimonials.set(this.adminService.getTestimonials());
     this.recommendations.set(this.adminService.getRecommendations());
@@ -838,6 +927,14 @@ export class AdminComponent implements OnInit {
       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300';
   }
 
+  openSecurity() {
+    this.securityModalOpen.set(true);
+  }
+
+  closeSecurity() {
+    this.securityModalOpen.set(false);
+  }
+
   // Logout functionality
   async logout() {
     this.isLoggingOut.set(true);
@@ -852,6 +949,15 @@ export class AdminComponent implements OnInit {
   }
 
   // About management
+  onAboutAction() {
+    const profile = this.about();
+    if (profile) {
+      this.editAbout(profile);
+      return;
+    }
+    this.openAboutModal();
+  }
+
   openAboutModal() {
     this.selectedAbout.set(null);
     this.isEditingAbout.set(false);
@@ -872,6 +978,10 @@ export class AdminComponent implements OnInit {
 
   handleAboutSubmit() {
     this.closeAboutModal();
+    this.loadData();
+  }
+
+  onCvImported() {
     this.loadData();
   }
 
@@ -905,10 +1015,11 @@ export class AdminComponent implements OnInit {
           experience: about.experience
         });
       }
+      this.notificationService.success('Saved', 'About profile saved.');
+      this.handleAboutSubmit();
     } catch (error) {
       console.error('Error saving about:', error);
-    } finally {
-      this.handleAboutSubmit();
+      this.saveError('the about profile');
     }
   }
 
@@ -956,10 +1067,11 @@ export class AdminComponent implements OnInit {
           imageUrl: post.imageUrl
         });
       }
+      this.notificationService.success('Saved', 'Blog post saved.');
+      this.handleBlogSubmit();
     } catch (error) {
       console.error('Error saving blog post:', error);
-    } finally {
-      this.handleBlogSubmit();
+      this.saveError('the blog post');
     }
   }
 
@@ -1007,10 +1119,11 @@ export class AdminComponent implements OnInit {
           projects: skill.projects
         });
       }
+      this.notificationService.success('Saved', 'Skill saved.');
+      this.handleSkillSubmit();
     } catch (error) {
       console.error('Error saving skill:', error);
-    } finally {
-      this.handleSkillSubmit();
+      this.saveError('the skill');
     }
   }
 
@@ -1063,10 +1176,11 @@ export class AdminComponent implements OnInit {
           companyLogo: experience.companyLogo
         });
       }
+      this.notificationService.success('Saved', 'Experience saved.');
+      this.handleExperienceSubmit();
     } catch (error) {
       console.error('Error saving experience:', error);
-    } finally {
-      this.handleExperienceSubmit();
+      this.saveError('the experience');
     }
   }
 
@@ -1119,10 +1233,11 @@ export class AdminComponent implements OnInit {
           location: education.location
         });
       }
+      this.notificationService.success('Saved', 'Education saved.');
+      this.handleEducationSubmit();
     } catch (error) {
       console.error('Error saving education:', error);
-    } finally {
-      this.handleEducationSubmit();
+      this.saveError('the education entry');
     }
   }
 
@@ -1173,16 +1288,79 @@ export class AdminComponent implements OnInit {
           status: project.status
         });
       }
+      this.notificationService.success('Saved', 'Project saved.');
+      this.handleProjectSubmit();
     } catch (error) {
       console.error('Error saving project:', error);
-    } finally {
-      this.handleProjectSubmit();
+      this.saveError('the project');
     }
   }
 
   deleteProject(id: string) {
     if (confirm('Are you sure you want to delete this project?')) {
       void this.adminService.deleteProject(id).then(() => this.loadData());
+    }
+  }
+
+  openServiceModal() {
+    this.selectedService.set(null);
+    this.isEditingService.set(false);
+    this.serviceModalOpen.set(true);
+  }
+
+  editService(service: ServiceOffering) {
+    this.selectedService.set(service);
+    this.isEditingService.set(true);
+    this.serviceModalOpen.set(true);
+  }
+
+  closeServiceModal() {
+    this.serviceModalOpen.set(false);
+    this.selectedService.set(null);
+    this.isEditingService.set(false);
+  }
+
+  handleServiceSubmit() {
+    this.closeServiceModal();
+    this.loadData();
+  }
+
+  async saveService(service: ServiceOffering) {
+    try {
+      if (service.id) {
+        await this.adminService.updateService(service.id, service);
+      } else {
+        await this.adminService.addService({
+          title: service.title,
+          slug: service.slug,
+          description: service.description,
+          icon: service.icon,
+          category: service.category,
+          features: service.features,
+          deliverables: service.deliverables,
+          duration: service.duration,
+          price: service.price,
+          originalPrice: service.originalPrice,
+          popular: service.popular,
+          badge: service.badge,
+          ctaLabel: service.ctaLabel,
+          ctaUrl: service.ctaUrl,
+          featured: service.featured,
+          status: service.status,
+          sortOrder: service.sortOrder
+        });
+      }
+      this.notificationService.success('Saved', 'Service saved.');
+      this.handleServiceSubmit();
+    } catch (error) {
+      console.error('Error saving service:', error);
+      this.saveError('the service');
+    }
+  }
+
+  deleteService(id: string) {
+    if (confirm('Are you sure you want to delete this service?')) {
+      void this.adminService.deleteService(id).then(() => this.loadData());
     }
   }
 
@@ -1228,10 +1406,11 @@ export class AdminComponent implements OnInit {
           credentialId: certificate.credentialId
         });
       }
+      this.notificationService.success('Saved', 'Certificate saved.');
+      this.handleCertificateSubmit();
     } catch (error) {
       console.error('Error saving certificate:', error);
-    } finally {
-      this.handleCertificateSubmit();
+      this.saveError('the certificate');
     }
   }
 
@@ -1311,10 +1490,11 @@ export class AdminComponent implements OnInit {
           });
         }
       }
+      this.notificationService.success('Saved', 'Entry saved.');
+      this.handleTestimonialSubmit();
     } catch (error) {
       console.error('Error saving testimonial/recommendation:', error);
-    } finally {
-      this.handleTestimonialSubmit();
+      this.saveError('the testimonial');
     }
   }
 

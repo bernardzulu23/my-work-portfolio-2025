@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { AuthGuard, AdminGuard, LoginGuard } from './core/guards/auth.guard';
+import { AdminGuard, LoginGuard, SetupGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
   {
@@ -23,17 +23,26 @@ export const routes: Routes = [
     loadComponent: () => import('./features/projects/projects.component').then(m => m.ProjectsComponent)
   },
   {
+    path: 'services',
+    loadComponent: () => import('./features/services/services.component').then(m => m.ServicesComponent)
+  },
+  {
     path: 'blog',
     loadComponent: () => import('./features/blog/blog.component').then(m => m.BlogComponent)
+  },
+  {
+    path: 'blog/:id',
+    loadComponent: () => import('./features/blog/blog-detail.component').then(m => m.BlogDetailComponent)
   },
   {
     path: 'contact',
     loadComponent: () => import('./features/contact/contact.component').then(m => m.ContactComponent)
   },
   {
-    path: 'admin-setup',
-    loadComponent: () => import('./features/admin/admin-setup.component').then(m => m.AdminSetupComponent),
-    canActivate: [AuthGuard]
+    path: 'admin/setup',
+    loadComponent: () =>
+      import('./features/auth/admin-setup/admin-setup.component').then((m) => m.AdminSetupComponent),
+    canActivate: [SetupGuard]
   },
   {
     path: 'admin',

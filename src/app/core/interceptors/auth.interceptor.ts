@@ -6,22 +6,15 @@ import {
   HttpRequest
 } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../../environments/environment';
 
 @Injectable()
 export class AuthInterceptor implements HttpInterceptor {
-  private readonly TOKEN_KEY = 'auth_token';
-
   intercept(req: HttpRequest<unknown>, next: HttpHandler): Observable<HttpEvent<unknown>> {
-    const token = localStorage.getItem(this.TOKEN_KEY);
-
-    if (!token || req.method === 'GET') {
-      return next.handle(req);
+    if (req.url.startsWith(environment.apiUrl)) {
+      return next.handle(req.clone({ withCredentials: true }));
     }
 
-    const authReq = req.clone({
-      setHeaders: { Authorization: `Bearer ${token}` }
-    });
-
-    return next.handle(authReq);
+    return next.handle(req);
   }
 }

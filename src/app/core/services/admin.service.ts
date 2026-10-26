@@ -134,6 +134,27 @@ export interface ContactMessage {
   read_status: boolean;
 }
 
+export interface ServiceOffering {
+  id: string;
+  title: string;
+  slug: string;
+  description: string;
+  icon: string;
+  category: string;
+  features: string[];
+  deliverables: string[];
+  duration?: string;
+  price?: number;
+  originalPrice?: number;
+  popular: boolean;
+  badge?: string;
+  ctaLabel: string;
+  ctaUrl?: string;
+  featured: boolean;
+  status: 'active' | 'archived';
+  sortOrder: number;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -151,6 +172,7 @@ export class AdminService {
   private aboutSignal = signal<About[]>([]);
   private testimonialsSignal = signal<Testimonial[]>([]);
   private recommendationsSignal = signal<Recommendation[]>([]);
+  private servicesSignal = signal<ServiceOffering[]>([]);
 
   // BehaviorSubjects for backward compatibility
   private blogPostsSubject = new BehaviorSubject<BlogPost[]>([]);
@@ -162,6 +184,7 @@ export class AdminService {
   private aboutSubject = new BehaviorSubject<About[]>([]);
   private testimonialsSubject = new BehaviorSubject<Testimonial[]>([]);
   private recommendationsSubject = new BehaviorSubject<Recommendation[]>([]);
+  private servicesSubject = new BehaviorSubject<ServiceOffering[]>([]);
 
   // Observable streams
   blogPosts$ = this.blogPostsSubject.asObservable();
@@ -173,6 +196,7 @@ export class AdminService {
   about$ = this.aboutSubject.asObservable();
   testimonials$ = this.testimonialsSubject.asObservable();
   recommendations$ = this.recommendationsSubject.asObservable();
+  services$ = this.servicesSubject.asObservable();
 
   // Readonly signals for reactive public UI
   readonly projects = this.projectsSignal.asReadonly();
@@ -184,6 +208,7 @@ export class AdminService {
   readonly about = this.aboutSignal.asReadonly();
   readonly testimonials = this.testimonialsSignal.asReadonly();
   readonly recommendations = this.recommendationsSignal.asReadonly();
+  readonly services = this.servicesSignal.asReadonly();
 
   private refreshIntervalId: ReturnType<typeof setInterval> | null = null;
 
@@ -224,6 +249,16 @@ export class AdminService {
     return this.getActiveProjects().filter(project => project.featured);
   }
 
+  getActiveServices(): ServiceOffering[] {
+    return this.servicesSignal()
+      .filter(service => service.status === 'active')
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+  }
+
+  getFeaturedServices(): ServiceOffering[] {
+    return this.getActiveServices().filter(service => service.featured);
+  }
+
   // Load initial data from API
   async loadInitialData(force = false): Promise<void> {
     if (this.dataLoaded && !force) {
@@ -244,46 +279,42 @@ export class AdminService {
   }
 
   private async fetchAllData(): Promise<void> {
-    try {
-      const [
-        about,
-        skills,
-        workExperience,
-        education,
-        projects,
-        certificates,
-        testimonials,
-        recommendations,
-        blogPosts
-      ] = await Promise.all([
-        firstValueFrom(this.http.get<About>(`${environment.apiUrl}/about`)),
-        firstValueFrom(this.http.get<Skill[]>(`${environment.apiUrl}/skills`)),
-        firstValueFrom(this.http.get<WorkExperience[]>(`${environment.apiUrl}/work-experience`)),
-        firstValueFrom(this.http.get<Education[]>(`${environment.apiUrl}/education`)),
-        firstValueFrom(this.http.get<Project[]>(`${environment.apiUrl}/projects`)),
-        firstValueFrom(this.http.get<Certificate[]>(`${environment.apiUrl}/certificates`)),
-        firstValueFrom(this.http.get<Testimonial[]>(`${environment.apiUrl}/testimonials`)),
-        firstValueFrom(this.http.get<Recommendation[]>(`${environment.apiUrl}/recommendations`)),
-        firstValueFrom(this.http.get<BlogPost[]>(`${environment.apiUrl}/blog-posts`))
-      ]);
+    const results = await Promise.allSettled([
+      firstValueFrom(this.http.get<About>(`${environment.apiUrl}/about`)),
+      firstValueFrom(this.http.get<Skill[]>(`${environment.apiUrl}/skills`)),
+      firstValueFrom(this.http.get<WorkExperience[]>(`${environment.apiUrl}/work-experience`)),
+      firstValueFrom(this.http.get<Education[]>(`${environment.apiUrl}/education`)),
+      firstValueFrom(this.http.get<Project[]>(`${environment.apiUrl}/projects`)),
+      firstValueFrom(this.http.get<Certificate[]>(`${environment.apiUrl}/certificates`)),
+      firstValueFrom(this.http.get<Testimonial[]>(`${environment.apiUrl}/testimonials`)),
+      firstValueFrom(this.http.get<Recommendation[]>(`${environment.apiUrl}/recommendations`)),
+      firstValueFrom(this.http.get<BlogPost[]>(`${environment.apiUrl}/blog-posts`)),
+      firstValueFrom(this.http.get<ServiceOffering[]>(`${environment.apiUrl}/services`))
+    ]);
 
-      if (about && 'id' in about && about.id) {
-        this.setAbout([about]);
-      } else {
-        this.setAbout([]);
-      }
-      if (skills) this.setSkills(skills);
-      if (workExperience) this.setWorkExperience(workExperience.map((e: WorkExperience) => this.parseWorkExperience(e)));
-      if (education) this.setEducation(education.map((e: Education) => this.parseEducation(e)));
-      if (projects) this.setProjects(projects);
-      if (certificates) this.setCertificates(certificates.map((c: Certificate) => this.parseCertificate(c)));
-      if (testimonials) this.setTestimonials(testimonials.map((t: Testimonial) => this.parseTestimonial(t)));
-      if (recommendations) this.setRecommendations(recommendations.map((r: Recommendation) => this.parseRecommendation(r)));
-      if (blogPosts) this.setBlogPosts(blogPosts.map((p: BlogPost) => this.parseBlogPost(p)));
-    } catch (error) {
-      console.error('Error loading data from API:', error);
-      throw error;
+    const value = <T>(index: number, fallback: T): T => {
+      const result = results[index];
+      if (result.status === 'fulfilled') return result.value as T;
+      console.error('Error loading data from API:', result.reason);
+      return fallback;
+    };
+
+    const about = value<About | Record<string, never>>(0, {});
+    if (about && 'id' in about && about.id) {
+      this.setAbout([about as About]);
+    } else {
+      this.setAbout([]);
     }
+
+    this.setSkills(value<Skill[]>(1, []));
+    this.setWorkExperience(value<WorkExperience[]>(2, []).map((e) => this.parseWorkExperience(e)));
+    this.setEducation(value<Education[]>(3, []).map((e) => this.parseEducation(e)));
+    this.setProjects(value<Project[]>(4, []));
+    this.setCertificates(value<Certificate[]>(5, []).map((c) => this.parseCertificate(c)));
+    this.setTestimonials(value<Testimonial[]>(6, []).map((t) => this.parseTestimonial(t)));
+    this.setRecommendations(value<Recommendation[]>(7, []).map((r) => this.parseRecommendation(r)));
+    this.setBlogPosts(value<BlogPost[]>(8, []).map((p) => this.parseBlogPost(p)));
+    this.setServices(value<ServiceOffering[]>(9, []).map((service) => this.parseService(service)));
   }
 
   private parseWorkExperience(e: WorkExperience): WorkExperience {
@@ -322,6 +353,20 @@ export class AdminService {
     return { ...p, publishDate: new Date(p.publishDate) };
   }
 
+  private parseService(service: ServiceOffering): ServiceOffering {
+    return {
+      ...service,
+      features: Array.isArray(service.features) ? service.features : [],
+      deliverables: Array.isArray(service.deliverables) ? service.deliverables : [],
+      popular: !!service.popular,
+      featured: !!service.featured,
+      ctaLabel: service.ctaLabel || 'Get Started',
+      sortOrder: Number(service.sortOrder ?? 0),
+      price: service.price != null ? Number(service.price) : undefined,
+      originalPrice: service.originalPrice != null ? Number(service.originalPrice) : undefined
+    };
+  }
+
   private serializeDates<T extends Record<string, unknown>>(data: T): T {
     const serialized = { ...data };
     for (const [key, value] of Object.entries(serialized)) {
@@ -333,7 +378,7 @@ export class AdminService {
   }
 
   // Blog Posts Management
-  getBlogPosts() {
+  getBlogPosts(): BlogPost[] {
     return this.blogPostsSignal();
   }
 
@@ -381,7 +426,7 @@ export class AdminService {
   }
 
   // Skills Management
-  getSkills() {
+  getSkills(): Skill[] {
     return this.skillsSignal();
   }
 
@@ -429,7 +474,7 @@ export class AdminService {
   }
 
   // Work Experience Management
-  getWorkExperience() {
+  getWorkExperience(): WorkExperience[] {
     return this.workExperienceSignal();
   }
 
@@ -477,7 +522,7 @@ export class AdminService {
   }
 
   // Education Management
-  getEducation() {
+  getEducation(): Education[] {
     return this.educationSignal();
   }
 
@@ -525,7 +570,7 @@ export class AdminService {
   }
 
   // Projects Management
-  getProjects() {
+  getProjects(): Project[] {
     return this.projectsSignal();
   }
 
@@ -572,8 +617,52 @@ export class AdminService {
     }
   }
 
+  getServices(): ServiceOffering[] {
+    return this.servicesSignal();
+  }
+
+  async addService(service: Omit<ServiceOffering, 'id'>): Promise<ServiceOffering> {
+    const id = this.generateId();
+    const newService = { ...service, id };
+
+    try {
+      await firstValueFrom(this.http.post(`${environment.apiUrl}/services`, newService));
+      this.setServices([...this.servicesSignal(), newService]);
+      return newService;
+    } catch (error) {
+      console.error('Error adding service:', error);
+      throw error;
+    }
+  }
+
+  async updateService(id: string, updates: Partial<ServiceOffering>) {
+    try {
+      const currentService = this.servicesSignal().find(service => service.id === id);
+      if (!currentService) throw new Error('Service not found');
+
+      const updatedService = { ...currentService, ...updates };
+      await firstValueFrom(this.http.put(`${environment.apiUrl}/services/${id}`, updatedService));
+      this.setServices(this.servicesSignal().map(service =>
+        service.id === id ? updatedService : service
+      ));
+    } catch (error) {
+      console.error('Error updating service:', error);
+      throw error;
+    }
+  }
+
+  async deleteService(id: string) {
+    try {
+      await firstValueFrom(this.http.delete(`${environment.apiUrl}/services/${id}`));
+      this.setServices(this.servicesSignal().filter(service => service.id !== id));
+    } catch (error) {
+      console.error('Error deleting service:', error);
+      throw error;
+    }
+  }
+
   // Certificates Management
-  getCertificates() {
+  getCertificates(): Certificate[] {
     return this.certificatesSignal();
   }
 
@@ -621,12 +710,41 @@ export class AdminService {
   }
 
   // About Management
-  getAbout() {
+  getAbout(): About[] {
     return this.aboutSignal();
   }
 
   getAboutProfile(): About | null {
     return this.aboutSignal()[0] ?? null;
+  }
+
+  async parseCv(payload: { text?: string; pdfBase64?: string }): Promise<{
+    personal: { name: string; title: string; location: string; email: string; phone: string; summary: string };
+    experience: WorkExperience[];
+    education: Education[];
+    skills: Skill[];
+  }> {
+    const response = await firstValueFrom(
+      this.http.post<{ success: boolean; data: any }>(`${environment.apiUrl}/cv/parse`, payload)
+    );
+    return response.data;
+  }
+
+  async applyCv(payload: {
+    personal?: Record<string, string>;
+    experience: Array<Partial<WorkExperience>>;
+    education: Array<Partial<Education>>;
+    skills: Array<Partial<Skill>>;
+    patchAbout: boolean;
+  }): Promise<{ inserted: { experience: number; education: number; skills: number; skipped: number; aboutPatched: boolean } }> {
+    const result = await firstValueFrom(
+      this.http.post<{ success: boolean; inserted: { experience: number; education: number; skills: number; skipped: number; aboutPatched: boolean } }>(
+        `${environment.apiUrl}/cv/apply`,
+        payload
+      )
+    );
+    await this.refreshData();
+    return result;
   }
 
   async addAbout(about: Omit<About, 'id'>): Promise<About> {
@@ -667,7 +785,7 @@ export class AdminService {
   }
 
   // Testimonials Management
-  getTestimonials() {
+  getTestimonials(): Testimonial[] {
     return this.testimonialsSignal();
   }
 
@@ -715,7 +833,7 @@ export class AdminService {
   }
 
   // Recommendations Management
-  getRecommendations() {
+  getRecommendations(): Recommendation[] {
     return this.recommendationsSignal();
   }
 
@@ -767,7 +885,7 @@ export class AdminService {
     const messages = await firstValueFrom(
       this.http.get<ContactMessage[]>(`${environment.apiUrl}/contact`)
     );
-    return messages.map(message => ({
+    return messages.map((message: ContactMessage) => ({
       ...message,
       createdAt: new Date(message.createdAt)
     }));
@@ -775,6 +893,10 @@ export class AdminService {
 
   async deleteContactMessage(id: string): Promise<void> {
     await firstValueFrom(this.http.delete(`${environment.apiUrl}/contact/${id}`));
+  }
+
+  async submitContactMessage(data: { name: string; email: string; subject: string; message: string }): Promise<void> {
+    await firstValueFrom(this.http.post(`${environment.apiUrl}/contact`, data));
   }
 
   // Utility methods
@@ -823,6 +945,11 @@ export class AdminService {
     this.recommendationsSubject.next(recommendations);
   }
 
+  private setServices(services: ServiceOffering[]) {
+    this.servicesSignal.set(services);
+    this.servicesSubject.next(services);
+  }
+
   private generateId(): string {
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
   }
@@ -835,7 +962,8 @@ export class AdminService {
       workExperience: this.workExperienceSignal().length,
       education: this.educationSignal().length,
       projects: this.projectsSignal().length,
-      certificates: this.certificatesSignal().length
+      certificates: this.certificatesSignal().length,
+      services: this.servicesSignal().length
     };
   }
 
@@ -858,7 +986,8 @@ export class AdminService {
       certificates: this.certificatesSignal(),
       about: this.aboutSignal(),
       testimonials: this.testimonialsSignal(),
-      recommendations: this.recommendationsSignal()
+      recommendations: this.recommendationsSignal(),
+      services: this.servicesSignal()
     };
     return JSON.stringify(data, null, 2);
   }
