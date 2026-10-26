@@ -1,11 +1,10 @@
-import { Component, inject, signal, computed, effect, Inject } from '@angular/core';
+import { Component, inject, signal, computed, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { DOCUMENT } from '@angular/common';
 import { ThemeToggleComponent } from '../theme-toggle/theme-toggle.component';
+import { BrandLogoComponent } from '../brand-logo/brand-logo.component';
 import { AuthService } from '../../../core/services/auth.service';
-import { AdminService } from '../../../core/services/admin.service';
-import { LoadingSpinnerComponent } from '../loading-spinner/loading-spinner.component';
 
 interface NavItem {
   label: string;
@@ -18,51 +17,41 @@ interface NavItem {
 @Component({
   selector: 'app-navigation',
   standalone: true,
-  imports: [CommonModule, RouterModule, ThemeToggleComponent, LoadingSpinnerComponent],
+  imports: [CommonModule, RouterModule, ThemeToggleComponent, BrandLogoComponent],
   template: `
-    <nav class="bg-white dark:bg-gray-900 shadow-lg sticky top-0 z-50 transition-colors duration-200">
+    <nav class="bg-brand-navy shadow-lg sticky top-0 z-50">
       <div class="container mx-auto px-4">
-        <div class="flex justify-between items-center h-16">
-          <!-- Logo -->
-          <div class="flex items-center space-x-2">
-            <div class="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-              <span class="text-white font-bold text-sm">BZ</span>
-            </div>
-            <span class="font-bold text-xl text-gray-900 dark:text-white">{{displayName()}}</span>
-          </div>
+        <div class="flex justify-between items-center min-h-[4.5rem] md:min-h-[5.5rem] py-2 gap-3">
+          <app-brand-logo size="md" data-testid="brand-logo" class="min-w-0"></app-brand-logo>
 
-          <!-- Desktop Navigation -->
-          <div class="hidden md:flex items-center space-x-8">
+          <!-- Desktop Navigation: only from xl so tablets keep the hamburger -->
+          <div class="hidden xl:flex items-center gap-1 2xl:gap-2 min-w-0">
             <a *ngFor="let item of visibleNavItems()"
-               href="#"
                [routerLink]="item.path"
-               routerLinkActive="text-blue-600 dark:text-blue-400"
+               routerLinkActive="text-brand-gold"
                [routerLinkActiveOptions]="{exact: true}"
-               class="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 flex items-center space-x-2">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+               class="text-slate-200 hover:text-brand-goldLight px-2 2xl:px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 flex items-center gap-1.5 shrink-0">
+              <svg class="hidden 2xl:block w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path [attr.d]="getIconPath(item.icon)" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
               </svg>
               <span>{{item.label}}</span>
             </a>
 
-            <!-- Auth Section -->
-            <div class="flex items-center space-x-4 ml-4 pl-4 border-l border-gray-200 dark:border-gray-700">
-              <!-- User Info -->
-              <div *ngIf="authService.isAuthenticated() && !authService.loading()" class="flex items-center space-x-2">
-                <div class="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
+            <div class="flex items-center gap-2 ml-2 pl-3 border-l border-white/10 shrink-0">
+              <div *ngIf="authService.isAuthenticated() && !authService.loading()" class="hidden 2xl:flex items-center space-x-2 max-w-[10rem]">
+                <div class="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center shrink-0">
                   <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
                   </svg>
                 </div>
-                <span class="text-sm text-gray-700 dark:text-gray-300">{{ authService.getUserEmail() }}</span>
+                <span class="text-sm text-slate-200 truncate">{{ authService.getUserEmail() }}</span>
               </div>
 
-              <!-- Login/Logout Button -->
               <button
                 *ngIf="!authService.loading()"
                 (click)="authService.isAuthenticated() ? logout() : navigateToLogin()"
                 [disabled]="isLoggingOut()"
-                class="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed pointer-events-auto">
+                class="text-slate-200 hover:text-brand-goldLight px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed pointer-events-auto">
                 <svg *ngIf="isLoggingOut()" class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
                 </svg>
@@ -75,21 +64,17 @@ interface NavItem {
             </div>
           </div>
 
-          <!-- Theme Toggle & Mobile Menu Button -->
-          <div class="flex items-center space-x-4">
+          <div class="flex items-center gap-1 sm:gap-2 shrink-0">
             <app-theme-toggle></app-theme-toggle>
 
-            <!-- Mobile menu button -->
             <button
               (click)="toggleMobileMenu()"
-              class="md:hidden mobile-menu-button inline-flex items-center justify-center w-12 h-12 p-3 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
+              class="xl:hidden mobile-menu-button inline-flex items-center justify-center w-11 h-11 p-2 rounded-md text-slate-200 hover:text-brand-gold hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-brand-gold"
               [attr.aria-expanded]="mobileMenuOpen()">
               <span class="sr-only">Open main menu</span>
-              <!-- Hamburger icon -->
               <svg *ngIf="!mobileMenuOpen()" class="block h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
               </svg>
-              <!-- Close icon -->
               <svg *ngIf="mobileMenuOpen()" class="block h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
               </svg>
@@ -97,13 +82,11 @@ interface NavItem {
           </div>
         </div>
 
-        <!-- Mobile Navigation -->
-        <div *ngIf="mobileMenuOpen()" class="mobile-menu-content">
+        <div *ngIf="mobileMenuOpen()" class="mobile-menu-content xl:hidden">
           <div class="px-2 pt-2 pb-3 space-y-1">
             <a *ngFor="let item of visibleNavItems()"
-               href="#"
                [routerLink]="item.path"
-               routerLinkActive="bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
+               routerLinkActive="bg-white/10 text-brand-gold"
                [routerLinkActiveOptions]="{exact: true}"
                (click)="closeMobileMenu()"
                class="mobile-menu-link">
@@ -114,8 +97,8 @@ interface NavItem {
             </a>
 
             <!-- Mobile Auth Section -->
-            <div class="border-t border-gray-200 dark:border-gray-700 pt-3 mt-3">
-              <div *ngIf="authService.isAuthenticated() && !authService.loading()" class="px-3 py-2 text-sm text-gray-700 dark:text-gray-300">
+            <div class="border-t border-white/10 pt-3 mt-3">
+              <div *ngIf="authService.isAuthenticated() && !authService.loading()" class="px-3 py-2 text-sm text-slate-200">
                 <div class="flex items-center space-x-2">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
@@ -150,7 +133,11 @@ interface NavItem {
     }
 
     .router-link-active {
-      @apply text-blue-600 dark:text-blue-400;
+      @apply text-brand-gold;
+    }
+
+    .mobile-menu-link {
+      @apply flex items-center space-x-3 px-3 py-2 rounded-md text-base font-medium text-slate-200 hover:bg-white/10 hover:text-brand-gold;
     }
 
     .mobile-menu-button {
@@ -162,19 +149,10 @@ export class NavigationComponent {
   private router = inject(Router);
   private document = inject(DOCUMENT);
   protected authService: AuthService = inject(AuthService);
-  private adminService = inject(AdminService);
 
   protected mobileMenuOpen = signal<boolean>(false);
   protected isLoggingOut = signal<boolean>(false);
 
-  // Computed signal for display name from AdminService
-  protected displayName = computed(() => {
-    const aboutData = this.adminService.getAbout();
-    if (!aboutData || aboutData.length === 0) {
-      return 'Bernard Zulu'; // Fallback to default name
-    }
-    return aboutData[0]?.name || 'Bernard Zulu';
-  });
 
   constructor() {
     // Toggle body class when mobile menu opens/closes
@@ -188,7 +166,7 @@ export class NavigationComponent {
 
     // Close mobile menu when resizing to desktop view
     window.addEventListener('resize', () => {
-      if (window.innerWidth > 768 && this.mobileMenuOpen()) {
+      if (window.innerWidth >= 1280 && this.mobileMenuOpen()) {
         this.mobileMenuOpen.set(false);
       }
     });
@@ -202,6 +180,7 @@ export class NavigationComponent {
     { label: 'Skills', path: '/skills', icon: 'code' },
     { label: 'Certificates', path: '/certificates', icon: 'award' },
     { label: 'Projects', path: '/projects', icon: 'folder' },
+    { label: 'Services', path: '/services', icon: 'briefcase' },
     { label: 'Blog', path: '/blog', icon: 'document-text' },
     { label: 'Contact', path: '/contact', icon: 'mail' },
     { label: 'Admin', path: '/admin', icon: 'cog', requiresAuth: true }
@@ -217,9 +196,7 @@ export class NavigationComponent {
   });
 
   toggleMobileMenu() {
-    console.log('toggleMobileMenu called');
     this.mobileMenuOpen.set(!this.mobileMenuOpen());
-    console.log('mobileMenuOpen:', this.mobileMenuOpen());
   }
 
   closeMobileMenu() {
@@ -227,12 +204,10 @@ export class NavigationComponent {
   }
 
   navigateToLogin() {
-    console.log('navigateToLogin called');
     this.router.navigate(['/login']);
   }
 
   async logout() {
-    console.log('logout called');
     this.isLoggingOut.set(true);
     try {
       await this.authService.signOut();

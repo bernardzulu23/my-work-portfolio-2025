@@ -108,8 +108,7 @@ describe('NavigationComponent', () => {
       const navElement = compiled.querySelector('nav');
       expect(navElement).toBeTruthy();
 
-      // Check if logo is rendered
-      const logoElement = compiled.querySelector('.w-8.h-8');
+      const logoElement = compiled.querySelector('app-brand-logo, img');
       expect(logoElement).toBeTruthy();
 
       // Check if navigation container exists

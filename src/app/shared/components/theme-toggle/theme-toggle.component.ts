@@ -9,7 +9,7 @@ import { ThemeService } from '../../../core/services/theme.service';
   template: `
     <button
       (click)="themeService.toggleTheme()"
-      class="relative inline-flex items-center justify-center w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+      class="relative inline-flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-white/10 hover:bg-white/20 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-brand-gold"
       [attr.aria-label]="themeService.getIsDarkMode() ? 'Switch to light mode' : 'Switch to dark mode'"
       type="button">
       <!-- Sun icon -->
