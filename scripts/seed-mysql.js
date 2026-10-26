@@ -173,7 +173,11 @@ async function seed() {
         rating INT NOT NULL,
         date DATETIME NOT NULL,
         featured BOOLEAN DEFAULT FALSE,
-        verified BOOLEAN DEFAULT FALSE
+        verified BOOLEAN DEFAULT FALSE,
+        companyLogo VARCHAR(255),
+        linkedinUrl VARCHAR(255),
+        project VARCHAR(255),
+        skills JSON
       )
     `);
 
@@ -188,7 +192,22 @@ async function seed() {
         date DATETIME NOT NULL,
         avatar VARCHAR(255),
         linkedinUrl VARCHAR(255),
+        companyLogo VARCHAR(255),
+        skills JSON,
         verified BOOLEAN DEFAULT FALSE
+      )
+    `);
+
+    // Contact Messages
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS contact_messages (
+        id VARCHAR(36) PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        email VARCHAR(255) NOT NULL,
+        subject VARCHAR(255) NOT NULL,
+        message TEXT NOT NULL,
+        createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        read_status BOOLEAN DEFAULT FALSE
       )
     `);
 
@@ -203,8 +222,8 @@ async function seed() {
     // About
     const aboutId = '1';
     await connection.execute(
-      `INSERT INTO about (id, name, title, bio, location, email, phone, tagline, availability) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) 
-       ON DUPLICATE KEY UPDATE name=VALUES(name)`,
+      `INSERT INTO about (id, name, title, bio, location, email, phone, tagline, availability, linkedinUrl, githubUrl) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) 
+       ON DUPLICATE KEY UPDATE name=VALUES(name), linkedinUrl=VALUES(linkedinUrl), githubUrl=VALUES(githubUrl)`,
       [
         aboutId,
         'Bernard Zulu',
@@ -214,7 +233,9 @@ async function seed() {
         'bernard.zulu@example.com',
         '+260 123 456 789',
         'Building the future, one line of code at a time',
-        'available'
+        'available',
+        'https://linkedin.com/in/bernard-zulu-071977224',
+        'https://github.com/bernardzulu23'
       ]
     );
 

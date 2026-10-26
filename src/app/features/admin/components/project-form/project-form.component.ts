@@ -99,21 +99,27 @@ import { Project } from '../../../../core/services/admin.service';
           </label>
         </div>
 
-        <!-- Image URL -->
-        <div>
+        <!-- Image URL or Upload -->
+        <div class="md:col-span-2">
           <label for="imageUrl" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Project Image URL *
+            Project Image *
           </label>
+          <input
+            type="file"
+            accept="image/*"
+            (change)="onImageSelected($event)"
+            class="w-full mb-2 text-sm text-gray-600 dark:text-gray-400">
           <input
             type="url"
             id="imageUrl"
             formControlName="imageUrl"
             class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-            placeholder="https://example.com/project-image.jpg">
+            placeholder="https://example.com/project-image.jpg or upload above">
           <div *ngIf="projectForm.get('imageUrl')?.invalid && projectForm.get('imageUrl')?.touched"
                class="mt-1 text-sm text-red-600">
-            Image URL is required
+            Image is required
           </div>
+          <img *ngIf="projectForm.get('imageUrl')?.value" [src]="projectForm.get('imageUrl')?.value" alt="Preview" class="mt-2 h-24 rounded-lg object-cover">
         </div>
       </div>
 
@@ -227,6 +233,18 @@ export class ProjectFormComponent implements OnInit {
         liveUrl: this.project.liveUrl || ''
       });
     }
+  }
+
+  onImageSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      this.projectForm.patchValue({ imageUrl: reader.result as string });
+    };
+    reader.readAsDataURL(file);
   }
 
   onFormSubmit() {

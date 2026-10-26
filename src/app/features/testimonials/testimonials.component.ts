@@ -311,8 +311,8 @@ export class TestimonialsComponent implements OnInit {
     return Math.round((totalRating / testimonials.length) * 10) / 10;
   });
 
-  ngOnInit() {
-    this.adminService.loadInitialData();
+  async ngOnInit() {
+    await this.adminService.refreshData();
   }
 
   getStars(rating: number): string[] {

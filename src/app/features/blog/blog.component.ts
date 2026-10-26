@@ -134,13 +134,11 @@ export class BlogComponent implements OnInit {
 
   protected isLoading = signal(true);
 
-  protected publishedPosts = computed(() =>
-    this.adminService.getBlogPosts().filter(post => post.status === 'published')
-  );
+  protected publishedPosts = computed(() => this.adminService.getPublishedBlogPosts());
 
   async ngOnInit() {
     try {
-      await this.adminService.loadInitialData();
+      await this.adminService.refreshData();
     } finally {
       this.isLoading.set(false);
     }

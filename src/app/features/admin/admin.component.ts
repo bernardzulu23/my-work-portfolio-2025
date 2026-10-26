@@ -1,5 +1,6 @@
 import { Router } from '@angular/router';
-import { AdminService, BlogPost, Skill, WorkExperience, Project, Certificate, About } from '../../core/services/admin.service';
+import { EducationFormComponent } from './components/education-form/education-form.component';
+import { AdminService, BlogPost, Skill, WorkExperience, Project, Certificate, About, Education, ContactMessage } from '../../core/services/admin.service';
 import type { Testimonial, Recommendation } from '../../core/types';
 import { AuthService } from '../../core/services/auth.service';
 import { ModalComponent } from '../../shared/components/modal/modal.component';
@@ -31,6 +32,7 @@ import { signal, computed, inject } from '@angular/core';
     ProjectFormComponent,
     CertificateFormComponent,
     TestimonialFormComponent,
+    EducationFormComponent,
     LoadingSpinnerComponent
   ],
   template: `
@@ -127,6 +129,12 @@ import { signal, computed, inject } from '@angular/core';
               Experience
             </button>
             <button
+              (click)="activeTab.set('education')"
+              [class]="getTabClass('education')"
+              class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+              Education
+            </button>
+            <button
               (click)="activeTab.set('projects')"
               [class]="getTabClass('projects')"
               class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
@@ -143,6 +151,12 @@ import { signal, computed, inject } from '@angular/core';
               [class]="getTabClass('testimonials')"
               class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
               Testimonials
+            </button>
+            <button
+              (click)="activeTab.set('contact')"
+              [class]="getTabClass('contact')"
+              class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+              Messages
             </button>
           </nav>
         </div>
@@ -427,6 +441,32 @@ import { signal, computed, inject } from '@angular/core';
             </div>
           </div>
 
+          <!-- Education Tab -->
+          <div *ngIf="activeTab() === 'education'" class="space-y-4">
+            <div class="flex justify-between items-center">
+              <h2 class="text-2xl font-bold">Education</h2>
+              <button (click)="openEducationModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md">
+                Add Education
+              </button>
+            </div>
+            <div class="grid gap-4">
+              <div *ngFor="let edu of education()" class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                <div class="flex justify-between items-start">
+                  <div>
+                    <h3 class="text-lg font-semibold">{{edu.degree}} in {{edu.field}}</h3>
+                    <p class="text-blue-600">{{edu.institution}}</p>
+                    <p class="text-sm text-gray-500">{{edu.location}}</p>
+                    <p class="text-sm mt-2">{{edu.description}}</p>
+                  </div>
+                  <div class="flex space-x-2">
+                    <button (click)="editEducation(edu)" class="text-blue-600 px-3 py-1">Edit</button>
+                    <button (click)="deleteEducation(edu.id)" class="text-red-600 px-3 py-1">Delete</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Certificates Tab -->
           <div *ngIf="activeTab() === 'certificates'" class="space-y-4">
             <div class="flex justify-between items-center">
@@ -527,6 +567,46 @@ import { signal, computed, inject } from '@angular/core';
                 </div>
               </div>
             </div>
+
+            <h3 class="text-xl font-bold mt-8">Recommendations</h3>
+            <div class="grid gap-4">
+              <div *ngFor="let recommendation of recommendations()" class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                <div class="flex justify-between items-start">
+                  <div>
+                    <h3 class="text-lg font-semibold">{{recommendation.author}}</h3>
+                    <p class="text-gray-600 dark:text-gray-400">{{recommendation.position}} at {{recommendation.company}}</p>
+                    <p class="text-gray-700 dark:text-gray-300 mt-2">{{recommendation.content}}</p>
+                  </div>
+                  <div class="flex space-x-2">
+                    <button (click)="editRecommendation(recommendation)" class="text-blue-600 px-3 py-1">Edit</button>
+                    <button (click)="deleteRecommendation(recommendation.id)" class="text-red-600 px-3 py-1">Delete</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Contact Messages Tab -->
+          <div *ngIf="activeTab() === 'contact'" class="space-y-4">
+            <div class="flex justify-between items-center">
+              <h2 class="text-2xl font-bold">Contact Messages</h2>
+              <button (click)="loadContactMessages()" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md">
+                Refresh
+              </button>
+            </div>
+            <div class="grid gap-4">
+              <div *ngFor="let message of contactMessages()" class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                <div class="flex justify-between items-start">
+                  <div>
+                    <h3 class="font-semibold">{{message.subject}}</h3>
+                    <p class="text-sm text-gray-500">{{message.name}} &lt;{{message.email}}&gt; · {{message.createdAt | date:'medium'}}</p>
+                    <p class="mt-2 text-gray-700 dark:text-gray-300">{{message.message}}</p>
+                  </div>
+                  <button (click)="deleteContactMessage(message.id)" class="text-red-600 px-3 py-1">Delete</button>
+                </div>
+              </div>
+              <p *ngIf="contactMessages().length === 0" class="text-gray-500">No messages yet.</p>
+            </div>
           </div>
         </div>
       </div>
@@ -571,6 +651,20 @@ import { signal, computed, inject } from '@angular/core';
           (onSubmit)="saveExperience($event)"
           (onCancel)="closeExperienceModal()">
         </app-experience-form>
+      </app-modal>
+
+      <!-- Education Modal -->
+      <app-modal
+        [isOpen]="educationModalOpen()"
+        title="Education"
+        (onClose)="closeEducationModal()"
+        (onConfirm)="handleEducationSubmit()">
+        <app-education-form
+          [education]="selectedEducation()"
+          [isEditing]="isEditingEducation()"
+          (onSubmit)="saveEducation($event)"
+          (onCancel)="closeEducationModal()">
+        </app-education-form>
       </app-modal>
 
       <!-- Project Modal -->
@@ -662,13 +756,14 @@ export class AdminComponent implements OnInit {
   ) {}
 
   // Active tab state
-  activeTab = signal<'about' | 'blog' | 'skills' | 'experience' | 'projects' | 'certificates' | 'testimonials'>('about');
+  activeTab = signal<'about' | 'blog' | 'skills' | 'experience' | 'education' | 'projects' | 'certificates' | 'testimonials' | 'contact'>('about');
 
   // Modal states
   aboutModalOpen = signal(false);
   blogModalOpen = signal(false);
   skillModalOpen = signal(false);
   experienceModalOpen = signal(false);
+  educationModalOpen = signal(false);
   projectModalOpen = signal(false);
   certificateModalOpen = signal(false);
   testimonialModalOpen = signal(false);
@@ -678,6 +773,7 @@ export class AdminComponent implements OnInit {
   selectedBlogPost = signal<BlogPost | null>(null);
   selectedSkill = signal<Skill | null>(null);
   selectedExperience = signal<WorkExperience | null>(null);
+  selectedEducation = signal<Education | null>(null);
   selectedProject = signal<Project | null>(null);
   selectedCertificate = signal<Certificate | null>(null);
 
@@ -686,6 +782,7 @@ export class AdminComponent implements OnInit {
   isEditingBlog = signal(false);
   isEditingSkill = signal(false);
   isEditingExperience = signal(false);
+  isEditingEducation = signal(false);
   isEditingProject = signal(false);
   isEditingCertificate = signal(false);
 
@@ -697,14 +794,20 @@ export class AdminComponent implements OnInit {
   blogPosts = signal<BlogPost[]>([]);
   skills = signal<Skill[]>([]);
   workExperience = signal<WorkExperience[]>([]);
+  education = signal<Education[]>([]);
   projects = signal<Project[]>([]);
   certificates = signal<Certificate[]>([]);
+  testimonials = signal<Testimonial[]>([]);
+  recommendations = signal<Recommendation[]>([]);
+  contactMessages = signal<ContactMessage[]>([]);
 
   // Computed stats
   stats = computed(() => this.adminService.getStats());
 
-  ngOnInit() {
+  async ngOnInit() {
+    await this.adminService.refreshData();
     this.loadData();
+    await this.loadContactMessages();
   }
 
   loadData() {
@@ -713,9 +816,19 @@ export class AdminComponent implements OnInit {
     this.blogPosts.set(this.adminService.getBlogPosts());
     this.skills.set(this.adminService.getSkills());
     this.workExperience.set(this.adminService.getWorkExperience());
+    this.education.set(this.adminService.getEducation());
     this.projects.set(this.adminService.getProjects());
     this.certificates.set(this.adminService.getCertificates());
     this.testimonials.set(this.adminService.getTestimonials());
+    this.recommendations.set(this.adminService.getRecommendations());
+  }
+
+  async loadContactMessages() {
+    try {
+      this.contactMessages.set(await this.adminService.getContactMessages());
+    } catch (error) {
+      console.error('Error loading contact messages:', error);
+    }
   }
 
   // Tab management
@@ -852,8 +965,7 @@ export class AdminComponent implements OnInit {
 
   deleteBlogPost(id: string) {
     if (confirm('Are you sure you want to delete this blog post?')) {
-      this.adminService.deleteBlogPost(id);
-      this.loadData();
+      void this.adminService.deleteBlogPost(id).then(() => this.loadData());
     }
   }
 
@@ -904,8 +1016,7 @@ export class AdminComponent implements OnInit {
 
   deleteSkill(id: string) {
     if (confirm('Are you sure you want to delete this skill?')) {
-      this.adminService.deleteSkill(id);
-      this.loadData();
+      void this.adminService.deleteSkill(id).then(() => this.loadData());
     }
   }
 
@@ -961,8 +1072,63 @@ export class AdminComponent implements OnInit {
 
   deleteExperience(id: string) {
     if (confirm('Are you sure you want to delete this experience?')) {
-      this.adminService.deleteWorkExperience(id);
-      this.loadData();
+      void this.adminService.deleteWorkExperience(id).then(() => this.loadData());
+    }
+  }
+
+  // Education management
+  openEducationModal() {
+    this.selectedEducation.set(null);
+    this.isEditingEducation.set(false);
+    this.educationModalOpen.set(true);
+  }
+
+  editEducation(education: Education) {
+    this.selectedEducation.set(education);
+    this.isEditingEducation.set(true);
+    this.educationModalOpen.set(true);
+  }
+
+  closeEducationModal() {
+    this.educationModalOpen.set(false);
+    this.selectedEducation.set(null);
+    this.isEditingEducation.set(false);
+  }
+
+  handleEducationSubmit() {
+    this.closeEducationModal();
+    this.loadData();
+  }
+
+  async saveEducation(education: Education) {
+    try {
+      if (education.id) {
+        await this.adminService.updateEducation(education.id, education);
+      } else {
+        await this.adminService.addEducation({
+          institution: education.institution,
+          degree: education.degree,
+          field: education.field,
+          startDate: education.startDate,
+          endDate: education.endDate,
+          current: education.current,
+          gpa: education.gpa,
+          honors: education.honors,
+          description: education.description,
+          institutionLogo: education.institutionLogo,
+          location: education.location
+        });
+      }
+    } catch (error) {
+      console.error('Error saving education:', error);
+    } finally {
+      this.handleEducationSubmit();
+    }
+  }
+
+  deleteEducation(id: string) {
+    if (confirm('Are you sure you want to delete this education entry?')) {
+      void this.adminService.deleteEducation(id).then(() => this.loadData());
     }
   }
 
@@ -1016,8 +1182,7 @@ export class AdminComponent implements OnInit {
 
   deleteProject(id: string) {
     if (confirm('Are you sure you want to delete this project?')) {
-      this.adminService.deleteProject(id);
-      this.loadData();
+      void this.adminService.deleteProject(id).then(() => this.loadData());
     }
   }
 
@@ -1072,13 +1237,13 @@ export class AdminComponent implements OnInit {
 
   deleteCertificate(id: string) {
     if (confirm('Are you sure you want to delete this certificate?')) {
-      this.adminService.deleteCertificate(id);
-      this.loadData();
+      void this.adminService.deleteCertificate(id).then(() => this.loadData());
     }
   }
 
   // Testimonial management
-  testimonials = signal<Testimonial[]>([]);
+  selectedTestimonial = signal<Testimonial | Recommendation | null>(null);
+  isEditingTestimonial = signal(false);
 
   openTestimonialModal() {
     this.selectedTestimonial.set(null);
@@ -1153,14 +1318,32 @@ export class AdminComponent implements OnInit {
     }
   }
 
+  editRecommendation(recommendation: Recommendation) {
+    this.selectedTestimonial.set(recommendation);
+    this.isEditingTestimonial.set(true);
+    this.testimonialModalOpen.set(true);
+  }
+
   deleteTestimonial(id: string) {
     if (confirm('Are you sure you want to delete this testimonial?')) {
-      this.adminService.deleteTestimonial(id);
-      this.loadData();
+      void this.adminService.deleteTestimonial(id).then(() => this.loadData());
     }
   }
 
-  // Additional signals for testimonials
-  selectedTestimonial = signal<Testimonial | null>(null);
-  isEditingTestimonial = signal(false);
+  deleteRecommendation(id: string) {
+    if (confirm('Are you sure you want to delete this recommendation?')) {
+      void this.adminService.deleteRecommendation(id).then(() => this.loadData());
+    }
+  }
+
+  async deleteContactMessage(id: string) {
+    if (confirm('Delete this message?')) {
+      try {
+        await this.adminService.deleteContactMessage(id);
+        await this.loadContactMessages();
+      } catch (error) {
+        console.error('Error deleting contact message:', error);
+      }
+    }
+  }
 }

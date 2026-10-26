@@ -19,7 +19,7 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
           <div class="max-w-4xl mx-auto text-center">
             <div class="animate-fade-in">
               <h1 class="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
-                Hi, I'm <span class="text-purple-600">{{about()?.name}}</span>
+                Hi, I'm <span class="text-purple-600">{{about()?.name || '...'}}</span>
               </h1>
               <p class="text-xl md:text-2xl text-gray-600 dark:text-gray-300 mb-8 leading-relaxed">
                 {{about()?.title}}
@@ -218,14 +218,12 @@ export class HomeComponent implements OnInit {
 
   protected isLoading = signal(true);
 
-  protected about = computed(() => this.adminService.getAbout()[0]);
+  protected about = computed(() => this.adminService.about()[0] ?? null);
 
-  protected featuredProjects = computed(() =>
-    this.adminService.getProjects().filter(project => project.featured)
-  );
+  protected featuredProjects = computed(() => this.adminService.getFeaturedActiveProjects());
 
   protected topSkills = computed(() => {
-    const skills = this.adminService.getSkills();
+    const skills = this.adminService.skills();
     return skills
       .sort((a, b) => b.proficiency - a.proficiency)
       .slice(0, 8);
@@ -235,7 +233,7 @@ export class HomeComponent implements OnInit {
 
   async ngOnInit() {
     try {
-      await this.adminService.loadInitialData();
+      await this.adminService.refreshData();
     } finally {
       this.isLoading.set(false);
     }
@@ -258,7 +256,7 @@ export class HomeComponent implements OnInit {
   }
 
   onDownloadResume() {
-    const about = this.adminService.getAbout()[0];
+    const about = this.adminService.getAboutProfile();
     const skills = this.adminService.getSkills();
     const certificates = this.adminService.getCertificates();
 
@@ -308,7 +306,7 @@ export class HomeComponent implements OnInit {
   }
 
   onViewResume() {
-    const about = this.adminService.getAbout()[0];
+    const about = this.adminService.getAboutProfile();
     const skills = this.adminService.getSkills();
     const certificates = this.adminService.getCertificates();
 

@@ -1,7 +1,10 @@
-import { Injectable, signal, computed } from '@angular/core';
+import { Injectable, signal, computed, inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
 import { SecurityService } from './security.service';
 import { BehaviorSubject } from 'rxjs';
+import { environment } from '../../../environments/environment';
 
 export interface AuthUser {
   id: string;
@@ -26,7 +29,8 @@ export interface SignUpCredentials {
 })
 export class AuthService {
   private readonly STORAGE_KEY = 'auth_user';
-  private readonly USERS_KEY = 'app_users';
+  private readonly TOKEN_KEY = 'auth_token';
+  private http = inject(HttpClient);
   
   private _user = signal<AuthUser | null>(null);
   private _loading = signal(false);
@@ -96,10 +100,12 @@ export class AuthService {
       }
 
       // Validate password strength
+      /*
       const passwordValidation = this.securityService.validatePasswordStrength(sanitizedPassword);
       if (!passwordValidation.valid) {
         return { success: false, error: 'Password does not meet security requirements' };
       }
+      */
 
       // Get client identifier
       const clientIdentifier = this.getClientIdentifier();
@@ -115,42 +121,33 @@ export class AuthService {
         }
       }
 
-      // Get stored users
-      const users = this.getStoredUsers();
-      const user = users.find(u => u.email === sanitizedEmail);
+      // Authenticate via API
+      const response = await firstValueFrom(
+        this.http.post<{ success: boolean; error?: string; user?: AuthUser; token?: string }>(
+          `${environment.apiUrl}/auth/login`,
+          { email: sanitizedEmail, password: sanitizedPassword }
+        )
+      );
 
-      if (!user) {
+      if (!response.success || !response.user) {
         this.securityService.recordLoginAttempt(clientIdentifier, false);
-        return { success: false, error: 'Invalid email or password' };
+        return { success: false, error: response.error || 'Invalid email or password' };
       }
 
-      // Verify password (in production, use proper hashing)
-      const isValidPassword = this.verifyPassword(sanitizedPassword, user.password);
-      
-      if (!isValidPassword) {
-        this.securityService.recordLoginAttempt(clientIdentifier, false);
-        return { success: false, error: 'Invalid email or password' };
-      }
-
-      // Check if user is admin
-      if (user.role !== 'admin') {
+      if (response.user.role !== 'admin') {
         this.securityService.recordLoginAttempt(clientIdentifier, false);
         return { success: false, error: 'Access denied. Admin privileges required.' };
       }
 
-      // Create session
-      const authUser: AuthUser = {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        created_at: user.created_at
-      };
+      const authUser: AuthUser = response.user;
 
       this._user.set(authUser);
       this.userSubject.next(authUser);
       
-      // Save to localStorage
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(authUser));
+      if (response.token) {
+        localStorage.setItem(this.TOKEN_KEY, response.token);
+      }
 
       // Record successful login
       this.securityService.recordLoginAttempt(clientIdentifier, true);
@@ -177,10 +174,17 @@ export class AuthService {
       this._loading.set(true);
       this.loadingSubject.next(true);
 
+      try {
+        await firstValueFrom(this.http.post(`${environment.apiUrl}/auth/logout`, {}));
+      } catch {
+        // Ignore logout API errors — still clear local session
+      }
+
       this._user.set(null);
       this.userSubject.next(null);
       
       localStorage.removeItem(this.STORAGE_KEY);
+      localStorage.removeItem(this.TOKEN_KEY);
       this.router.navigate(['/']);
     } catch (error) {
       console.error('Sign out error:', error);
@@ -190,57 +194,12 @@ export class AuthService {
     }
   }
 
-  async signUp(email: string, password: string, role: string = 'user'): Promise<{ success: boolean; error?: string }> {
-    try {
-      this._loading.set(true);
-      this.loadingSubject.next(true);
-
-      // Validate email
-      if (!this.securityService.validateEmail(email)) {
-        return { success: false, error: 'Invalid email format' };
-      }
-
-      // Validate password
-      const passwordValidation = this.securityService.validatePasswordStrength(password);
-      if (!passwordValidation.valid) {
-        return { success: false, error: passwordValidation.errors[0] || 'Password does not meet security requirements' };
-      }
-
-      // Check if user exists
-      const users = this.getStoredUsers();
-      if (users.find(u => u.email === email)) {
-        return { success: false, error: 'User already exists' };
-      }
-
-      // Hash password (simple base64 for demo - use bcrypt in production)
-      const hashedPassword = this.hashPassword(password);
-
-      // Create new user
-      const newUser = {
-        id: this.generateId(),
-        email,
-        password: hashedPassword,
-        role,
-        created_at: new Date().toISOString()
-      };
-
-      users.push(newUser);
-      localStorage.setItem(this.USERS_KEY, JSON.stringify(users));
-
-      return { success: true };
-    } catch (error) {
-      console.error('Sign up error:', error);
-      return { success: false, error: 'An unexpected error occurred' };
-    } finally {
-      this._loading.set(false);
-      this.loadingSubject.next(false);
-    }
+  async signUp(_email: string, _password: string, _role: string = 'user'): Promise<{ success: boolean; error?: string }> {
+    return { success: false, error: 'Registration is disabled. Contact the administrator.' };
   }
 
-  async resetPassword(email: string): Promise<{ success: boolean; error?: string }> {
-    // In a real app, this would send an email
-    // For demo, just return success
-    return { success: true };
+  async resetPassword(_email: string): Promise<{ success: boolean; error?: string }> {
+    return { success: false, error: 'Password reset is not available. Contact the administrator.' };
   }
 
   // Admin check methods
@@ -261,26 +220,11 @@ export class AuthService {
       return { success: false, error: 'No user logged in' };
     }
 
-    const users = this.getStoredUsers();
-    const userIndex = users.findIndex(u => u.id === user.id);
-    
-    if (userIndex === -1) {
-      return { success: false, error: 'User not found' };
+    if (user.role === 'admin') {
+      return { success: true };
     }
 
-    users[userIndex].role = 'admin';
-    localStorage.setItem(this.USERS_KEY, JSON.stringify(users));
-
-    const updatedUser: AuthUser = {
-      ...user,
-      role: 'admin'
-    };
-
-    this._user.set(updatedUser);
-    this.userSubject.next(updatedUser);
-    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(updatedUser));
-
-    return { success: true };
+    return { success: false, error: 'Admin role can only be assigned by the server.' };
   }
 
   // Utility methods
@@ -299,35 +243,5 @@ export class AuthService {
   private formatTime(date: Date): string {
     const diff = Math.ceil((date.getTime() - Date.now()) / 1000 / 60);
     return `${diff} minutes`;
-  }
-
-  private getStoredUsers(): any[] {
-    const users = localStorage.getItem(this.USERS_KEY);
-    if (!users) {
-      // Create default admin user
-      const defaultUsers = [{
-        id: 'admin-1',
-        email: 'admin@bernardzulu.com',
-        password: this.hashPassword('admin123'),
-        role: 'admin',
-        created_at: new Date().toISOString()
-      }];
-      localStorage.setItem(this.USERS_KEY, JSON.stringify(defaultUsers));
-      return defaultUsers;
-    }
-    return JSON.parse(users);
-  }
-
-  private hashPassword(password: string): string {
-    // Simple hash for demo - use bcrypt in production
-    return btoa(password + '_salt_bernard');
-  }
-
-  private verifyPassword(password: string, hash: string): boolean {
-    return this.hashPassword(password) === hash;
-  }
-
-  private generateId(): string {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2);
   }
 }

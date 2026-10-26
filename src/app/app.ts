@@ -1,8 +1,9 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { MainLayoutComponent } from './layouts/main-layout/main-layout.component';
 import { NotificationComponent } from './shared/components/notification/notification.component';
 import { ThemeService } from './core/services/theme.service';
+import { AdminService } from './core/services/admin.service';
 
 @Component({
   selector: 'app-root',
@@ -15,11 +16,15 @@ import { ThemeService } from './core/services/theme.service';
   `,
   styleUrl: './app.css'
 })
-export class App implements OnInit {
+export class App implements OnInit, OnDestroy {
   private themeService = inject(ThemeService);
+  private adminService = inject(AdminService);
 
   ngOnInit() {
-    // Theme service is already initialized in constructor
-    // This ensures theme is applied on app startup
+    this.adminService.startLiveSync(30000);
+  }
+
+  ngOnDestroy() {
+    this.adminService.stopLiveSync();
   }
 }

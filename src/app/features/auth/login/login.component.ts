@@ -56,16 +56,33 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
             </div>
             <div>
               <label for="password" class="sr-only">Password</label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autocomplete="current-password"
-                formControlName="password"
-                class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-800 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Password"
-                [class.border-red-300]="isFieldInvalid('password')"
-              >
+              <div class="relative">
+                <input
+                  id="password"
+                  name="password"
+                  [type]="showPassword() ? 'text' : 'password'"
+                  autocomplete="current-password"
+                  formControlName="password"
+                  class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-800 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm pr-10"
+                  placeholder="Password"
+                  [class.border-red-300]="isFieldInvalid('password')"
+                >
+                <button
+                  type="button"
+                  (click)="togglePasswordVisibility()"
+                  class="absolute inset-y-0 right-0 pr-3 flex items-center z-20 cursor-pointer text-gray-400 hover:text-gray-500 focus:outline-none"
+                  tabindex="-1"
+                >
+                  <svg *ngIf="!showPassword()" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                  <svg *ngIf="showPassword()" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a10.05 10.05 0 011.574-2.925m2.454-2.452A19.822 19.822 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.05 10.05 0 01-1.574 2.925M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3l18 18" />
+                  </svg>
+                </button>
+              </div>
               <div *ngIf="isFieldInvalid('password')" class="text-xs text-red-600 mt-1 px-3">
                 <span *ngIf="loginForm.get('password')?.errors?.['required']">Password required</span>
                 <span *ngIf="loginForm.get('password')?.errors?.['xssAttempt']">Invalid characters</span>
@@ -138,6 +155,7 @@ export class LoginComponent {
   loginError = signal<string | null>(null);
   failedAttempts = signal(0);
   lockoutTime = signal<number | null>(null);
+  showPassword = signal(false);
 
   constructor() {
     this.loginForm = this.fb.group({
@@ -158,6 +176,10 @@ export class LoginComponent {
   isFieldInvalid(fieldName: string): boolean {
     const field = this.loginForm.get(fieldName);
     return !!(field && field.invalid && (field.dirty || field.touched));
+  }
+
+  togglePasswordVisibility() {
+    this.showPassword.update(value => !value);
   }
 
   async onSubmit() {

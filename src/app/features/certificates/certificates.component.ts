@@ -112,7 +112,7 @@ export class CertificatesComponent implements OnInit {
 
   protected certificates = computed(() => this.adminService.getCertificates());
 
-  ngOnInit() {
-    this.adminService.loadInitialData();
+  async ngOnInit() {
+    await this.adminService.refreshData();
   }
 }

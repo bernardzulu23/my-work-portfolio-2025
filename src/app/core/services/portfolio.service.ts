@@ -1,6 +1,8 @@
 import { Injectable, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, BehaviorSubject } from 'rxjs';
+import { BehaviorSubject } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
+import { environment } from '../../../environments/environment';
 
 export interface Skill {
   id: string;
@@ -57,11 +59,10 @@ export interface BlogPost {
   category: string;
   readTime: number;
   featured: boolean;
+  status?: 'draft' | 'published';
+  imageUrl?: string;
 }
 
-import { environment } from '../../../environments/environment';
-
-// ... (previous imports)
 
 @Injectable({
   providedIn: 'root'
@@ -142,25 +143,23 @@ export class PortfolioService {
   async loadInitialData() {
     try {
       const [skills, certificates, projects, blogPosts] = await Promise.all([
-        this.http.get<Skill[]>(`${this.apiUrl}/skills`).toPromise(),
-        this.http.get<Certificate[]>(`${this.apiUrl}/certificates`).toPromise(),
-        this.http.get<Project[]>(`${this.apiUrl}/projects`).toPromise(),
-        this.http.get<BlogPost[]>(`${this.apiUrl}/blog-posts`).toPromise()
+        firstValueFrom(this.http.get<Skill[]>(`${this.apiUrl}/skills`)),
+        firstValueFrom(this.http.get<Certificate[]>(`${this.apiUrl}/certificates`)),
+        firstValueFrom(this.http.get<Project[]>(`${this.apiUrl}/projects`)),
+        firstValueFrom(this.http.get<BlogPost[]>(`${this.apiUrl}/blog-posts`))
       ]);
 
       if (skills) this.setSkills(skills);
-      if (certificates) this.setCertificates(certificates.map((c: any) => ({
+      if (certificates) this.setCertificates(certificates.map((c) => ({
         ...c,
         issueDate: new Date(c.issueDate),
         expiryDate: c.expiryDate ? new Date(c.expiryDate) : undefined
       })));
       if (projects) this.setProjects(projects);
-      if (blogPosts) this.setBlogPosts(blogPosts.map((p: any) => ({
+      if (blogPosts) this.setBlogPosts(blogPosts.map((p) => ({
         ...p,
         publishDate: new Date(p.publishDate)
       })));
-
-      console.log('Portfolio data loaded from API');
     } catch (error) {
       console.error('Error loading portfolio data:', error);
     }
@@ -264,7 +263,7 @@ export class PortfolioService {
       return update ? { ...cert, ...update.updates } : cert;
     });
     this.setCertificates(updatedCertificates);
-    this.saveToStorage();
+    console.warn('bulkUpdateCertificates not implemented for API backend yet');
   }
 
   bulkUpdateBlogPosts(updates: Array<{ id: string; updates: Partial<BlogPost> }>): void {
@@ -274,15 +273,9 @@ export class PortfolioService {
       return update ? { ...post, ...update.updates } : post;
     });
     this.setBlogPosts(updatedPosts);
-    this.saveToStorage();
+    console.warn('bulkUpdateBlogPosts not implemented for API backend yet');
   }
 
   // Helper methods placeholders to fix build errors if referenced elsewhere
-  private loadMockData() { console.warn('loadMockData is deprecated'); }
-  private saveToStorage() { console.warn('saveToStorage is deprecated'); }
-  private restoreData(data: any) { console.warn('restoreData is deprecated'); }
-  private loadSkills() { console.warn('loadSkills is deprecated'); }
-  private loadCertificates() { console.warn('loadCertificates is deprecated'); }
-  private loadProjects() { console.warn('loadProjects is deprecated'); }
-  private loadBlogPosts() { console.warn('loadBlogPosts is deprecated'); }
+  // All data is now dynamic from API
 }

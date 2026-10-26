@@ -115,9 +115,9 @@ import { AdminService } from '../../core/services/admin.service';
 export class ProjectsComponent implements OnInit {
   private adminService = inject(AdminService);
 
-  protected projects = computed(() => this.adminService.getProjects());
+  protected projects = computed(() => this.adminService.getActiveProjects());
 
-  ngOnInit() {
-    this.adminService.loadInitialData();
+  async ngOnInit() {
+    await this.adminService.refreshData();
   }
 }

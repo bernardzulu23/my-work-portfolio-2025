@@ -140,8 +140,8 @@ export class AboutComponent implements OnInit {
     return name.substring(0, 2).toUpperCase();
   });
 
-  ngOnInit() {
-    this.adminService.loadInitialData();
+  async ngOnInit() {
+    await this.adminService.refreshData();
   }
 
   getAvailabilityText(availability: string): string {

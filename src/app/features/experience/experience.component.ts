@@ -277,8 +277,8 @@ export class ExperienceComponent implements OnInit {
     return Math.round(totalMonths / 12 * 10) / 10; // Round to 1 decimal place
   });
 
-  ngOnInit() {
-    this.adminService.loadInitialData();
+  async ngOnInit() {
+    await this.adminService.refreshData();
   }
 
   getDurationText(experience: any): string {
