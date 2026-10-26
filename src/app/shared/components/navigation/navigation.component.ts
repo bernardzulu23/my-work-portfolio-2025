@@ -31,7 +31,7 @@ interface NavItem {
                routerLinkActive="text-brand-gold"
                [routerLinkActiveOptions]="{exact: true}"
                class="text-slate-200 hover:text-brand-goldLight px-2 2xl:px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 flex items-center gap-1.5 shrink-0">
-              <svg class="hidden 2xl:block w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="hidden 2xl:block w-4 h-4 shrink-0" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path [attr.d]="getIconPath(item.icon)" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
               </svg>
               <span>{{item.label}}</span>
@@ -40,7 +40,7 @@ interface NavItem {
             <div class="flex items-center gap-2 ml-2 pl-3 border-l border-white/10 shrink-0">
               <div *ngIf="authService.isAuthenticated() && !authService.loading()" class="hidden 2xl:flex items-center space-x-2 max-w-[10rem]">
                 <div class="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center shrink-0">
-                  <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
                   </svg>
                 </div>
@@ -52,10 +52,10 @@ interface NavItem {
                 (click)="authService.isAuthenticated() ? logout() : navigateToLogin()"
                 [disabled]="isLoggingOut()"
                 class="text-slate-200 hover:text-brand-goldLight px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed pointer-events-auto">
-                <svg *ngIf="isLoggingOut()" class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg *ngIf="isLoggingOut()" class="w-4 h-4 animate-spin" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
                 </svg>
-                <svg *ngIf="!isLoggingOut()" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg *ngIf="!isLoggingOut()" class="w-4 h-4" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path *ngIf="!authService.isAuthenticated()" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path>
                   <path *ngIf="authService.isAuthenticated()" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
                 </svg>
@@ -72,10 +72,10 @@ interface NavItem {
               class="xl:hidden mobile-menu-button inline-flex items-center justify-center w-11 h-11 p-2 rounded-md text-slate-200 hover:text-brand-gold hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-brand-gold"
               [attr.aria-expanded]="mobileMenuOpen()">
               <span class="sr-only">Open main menu</span>
-              <svg *ngIf="!mobileMenuOpen()" class="block h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg *ngIf="!mobileMenuOpen()" class="block h-6 w-6" width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
               </svg>
-              <svg *ngIf="mobileMenuOpen()" class="block h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg *ngIf="mobileMenuOpen()" class="block h-6 w-6" width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
               </svg>
             </button>
@@ -90,7 +90,7 @@ interface NavItem {
                [routerLinkActiveOptions]="{exact: true}"
                (click)="closeMobileMenu()"
                class="mobile-menu-link">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="w-5 h-5" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path [attr.d]="getIconPath(item.icon)" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
               </svg>
               <span>{{item.label}}</span>
@@ -100,7 +100,7 @@ interface NavItem {
             <div class="border-t border-white/10 pt-3 mt-3">
               <div *ngIf="authService.isAuthenticated() && !authService.loading()" class="px-3 py-2 text-sm text-slate-200">
                 <div class="flex items-center space-x-2">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg class="w-4 h-4" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
                   </svg>
                   <span>{{ authService.getUserEmail() }}</span>
@@ -112,10 +112,10 @@ interface NavItem {
                 (click)="authService.isAuthenticated() ? logout() : navigateToLogin()"
                 [disabled]="isLoggingOut()"
                 class="mobile-menu-link w-full text-left disabled:opacity-50 disabled:cursor-not-allowed">
-                <svg *ngIf="isLoggingOut()" class="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg *ngIf="isLoggingOut()" class="w-5 h-5 animate-spin" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
                 </svg>
-                <svg *ngIf="!isLoggingOut()" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg *ngIf="!isLoggingOut()" class="w-5 h-5" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path *ngIf="!authService.isAuthenticated()" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path>
                   <path *ngIf="authService.isAuthenticated()" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
                 </svg>

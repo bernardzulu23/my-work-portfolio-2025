@@ -401,3 +401,20 @@
 .dark ::-webkit-scrollbar-thumb:hover {
   background: var(--primary-600);
 }
+
+/* Unlayered on purpose. Production was dropping Tailwind width/height on SVGs,
+   so icons filled the viewport. This cap always applies. */
+html,
+body {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  max-width: 1.5rem;
+  max-height: 1.5rem;
+  flex-shrink: 0;
+  overflow: hidden;
+}

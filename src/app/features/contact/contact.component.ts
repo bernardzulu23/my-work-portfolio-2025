@@ -1,13 +1,12 @@
 import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { firstValueFrom } from 'rxjs';
+import { ActivatedRoute } from '@angular/router';
 import { NotificationService } from '../../shared/services/notification.service';
 import { AnalyticsService } from '../../core/services/analytics.service';
 import { AdminService } from '../../core/services/admin.service';
+import { SecurityService } from '../../core/services/security.service';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
-import { environment } from '../../../environments/environment';
 
 interface ContactForm {
   name: string;
@@ -21,7 +20,7 @@ interface ContactForm {
   standalone: true,
   imports: [CommonModule, FormsModule, ReactiveFormsModule, LoadingSpinnerComponent],
   template: `
-    <div class="container mx-auto px-4 py-20">
+    <div class="container mx-auto px-4 py-12 md:py-20">
       <div class="text-center mb-16">
         <h1 class="section-title">Get In Touch</h1>
         <p class="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
@@ -38,13 +37,13 @@ interface ContactForm {
       <ng-template #contactContent>
       <div class="grid lg:grid-cols-2 gap-12 max-w-6xl mx-auto">
         <!-- Contact Information -->
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-5 sm:p-8">
           <h2 class="text-2xl font-bold mb-6 text-gray-900 dark:text-white">Contact Information</h2>
 
           <div class="space-y-6" *ngIf="hasContactInfo(); else noContactInfo">
             <div class="flex items-center space-x-4" *ngIf="about().email">
               <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
-                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-6 h-6 text-blue-600" width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
                 </svg>
               </div>
@@ -58,7 +57,7 @@ interface ContactForm {
 
             <div class="flex items-center space-x-4" *ngIf="about().phone">
               <div class="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center">
-                <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-6 h-6 text-green-600" width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path>
                 </svg>
               </div>
@@ -71,8 +70,8 @@ interface ContactForm {
             </div>
 
             <div class="flex items-center space-x-4" *ngIf="about().location">
-              <div class="w-12 h-12 bg-purple-100 dark:bg-purple-900 rounded-full flex items-center justify-center">
-                <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div class="w-12 h-12 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center">
+                <svg class="w-6 h-6 text-brand-gold" width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
                 </svg>
@@ -85,7 +84,7 @@ interface ContactForm {
 
             <div class="flex items-center space-x-4" *ngIf="about().linkedinUrl">
               <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
-                <svg class="w-6 h-6 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
+                <svg class="w-6 h-6 text-blue-600" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
                 </svg>
               </div>
@@ -100,7 +99,7 @@ interface ContactForm {
 
             <div class="flex items-center space-x-4" *ngIf="about().githubUrl">
               <div class="w-12 h-12 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center">
-                <svg class="w-6 h-6 text-gray-600" fill="currentColor" viewBox="0 0 24 24">
+                <svg class="w-6 h-6 text-gray-600" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
                 </svg>
               </div>
@@ -120,8 +119,11 @@ interface ContactForm {
         </div>
 
         <!-- Contact Form -->
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8">
-          <h2 class="text-2xl font-bold mb-6 text-gray-900 dark:text-white">Send Message</h2>
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-5 sm:p-8">
+          <h2 class="text-2xl font-bold mb-2 text-gray-900 dark:text-white">Send Message</h2>
+          <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">
+            Or send a message — it is delivered to the inbox and the admin dashboard.
+          </p>
 
           <form [formGroup]="contactForm" (ngSubmit)="onSubmit()" class="space-y-6">
             <div class="grid md:grid-cols-2 gap-6">
@@ -181,10 +183,10 @@ interface ContactForm {
             <button
               type="submit"
               [disabled]="contactForm.invalid || isSubmitting()"
-              class="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 transition-all duration-200 flex items-center justify-center space-x-2">
+              class="w-full bg-gradient-to-r from-blue-800 to-amber-600 text-white py-3 rounded-lg font-semibold hover:from-blue-900 hover:to-amber-500 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 transition-all duration-200 flex items-center justify-center space-x-2">
               <span *ngIf="!isSubmitting()">Send Message</span>
               <span *ngIf="isSubmitting()" class="flex items-center space-x-2">
-                <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <svg class="animate-spin h-5 w-5" width="20" height="20" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                   <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
@@ -218,26 +220,39 @@ interface ContactForm {
 })
 export class ContactComponent implements OnInit {
   private fb = inject(FormBuilder);
-  private http = inject(HttpClient);
   private adminService = inject(AdminService);
+  private securityService = inject(SecurityService);
   private notificationService = inject(NotificationService);
   private analyticsService = inject(AnalyticsService);
+  private route = inject(ActivatedRoute);
 
   protected contactForm: FormGroup;
   protected isSubmitting = signal(false);
   protected isLoading = signal(true);
 
-  protected about = computed(() => this.adminService.getAboutProfile() ?? {
-    email: '',
-    phone: '',
-    location: '',
-    linkedinUrl: '',
-    githubUrl: ''
+  protected about = computed(() => {
+    const profile = this.adminService.about()[0];
+    return profile ?? {
+      email: '',
+      phone: '',
+      location: '',
+      linkedinUrl: '',
+      githubUrl: ''
+    };
   });
 
   async ngOnInit() {
     try {
       await this.adminService.refreshData();
+      const slug = this.route.snapshot.queryParamMap.get('service');
+      if (slug) {
+        const service = this.adminService.getActiveServices().find(item => item.slug === slug);
+        const title = service?.title || slug.replace(/-/g, ' ');
+        this.contactForm.patchValue({
+          subject: `Inquiry: ${title}`,
+          message: `I'd like to discuss the ${title} service.`
+        });
+      }
     } finally {
       this.isLoading.set(false);
     }
@@ -286,11 +301,22 @@ export class ContactComponent implements OnInit {
     this.isSubmitting.set(true);
 
     try {
-      const formData: ContactForm = this.contactForm.value;
+      const raw = this.contactForm.value as ContactForm;
+      const fields = [raw.name, raw.email, raw.subject, raw.message];
 
-      await firstValueFrom(
-        this.http.post(`${environment.apiUrl}/contact`, formData)
-      );
+      if (fields.some((field) => this.securityService.detectXSSAttempt(field))) {
+        this.notificationService.error('Invalid input detected', 'Security check failed');
+        return;
+      }
+
+      const formData: ContactForm = {
+        name: this.securityService.sanitizeInput(raw.name),
+        email: this.securityService.sanitizeInput(raw.email),
+        subject: this.securityService.sanitizeInput(raw.subject),
+        message: this.securityService.sanitizeInput(raw.message)
+      };
+
+      await this.adminService.submitContactMessage(formData);
 
       // Track contact form submission
       this.analyticsService.trackEvent('contact_form_submitted', {
@@ -299,7 +325,7 @@ export class ContactComponent implements OnInit {
       });
 
       this.notificationService.success(
-        'Message sent successfully! 🎉',
+        'Message sent successfully! ??',
         'Thank you for reaching out. I\'ll get back to you within 24 hours.'
       );
 

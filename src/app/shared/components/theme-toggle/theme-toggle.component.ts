@@ -16,6 +16,8 @@ import { ThemeService } from '../../../core/services/theme.service';
       <svg
         *ngIf="!themeService.getIsDarkMode()"
         class="w-5 h-5 text-yellow-500 transition-transform duration-200"
+        width="20"
+        height="20"
         fill="none"
         stroke="currentColor"
         viewBox="0 0 24 24">
@@ -28,6 +30,8 @@ import { ThemeService } from '../../../core/services/theme.service';
       <svg
         *ngIf="themeService.getIsDarkMode()"
         class="w-5 h-5 text-blue-400 transition-transform duration-200"
+        width="20"
+        height="20"
         fill="none"
         stroke="currentColor"
         viewBox="0 0 24 24">
