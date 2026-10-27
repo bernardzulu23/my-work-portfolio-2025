@@ -36,11 +36,31 @@ function getAdminEmail() {
   return String(process.env.ADMIN_EMAIL || '').trim().toLowerCase();
 }
 
-function getAllowedOrigins() {
-  return (process.env.ALLOWED_ORIGINS || 'http://localhost:4200')
-    .split(',')
-    .map((origin) => origin.trim())
+function normalizeOrigin(origin) {
+  return String(origin || '').trim().replace(/\/+$/, '');
+}
+
+function vercelAppOrigins() {
+  const hosts = [
+    process.env.VERCEL_PROJECT_PRODUCTION_URL,
+    process.env.VERCEL_URL,
+    process.env.VERCEL_BRANCH_URL
+  ].filter(Boolean);
+
+  return hosts
+    .map((host) => {
+      const cleaned = String(host).trim().replace(/^https?:\/\//i, '').replace(/\/+$/, '');
+      return cleaned ? `https://${cleaned}` : '';
+    })
     .filter(Boolean);
+}
+
+function getAllowedOrigins() {
+  const fromEnv = (process.env.ALLOWED_ORIGINS || 'http://localhost:4200')
+    .split(',')
+    .map(normalizeOrigin)
+    .filter(Boolean);
+  return [...new Set([...fromEnv, ...vercelAppOrigins()])];
 }
 
 function loopbackAliases(origin) {
@@ -63,10 +83,11 @@ function loopbackAliases(origin) {
 
 function isAllowedOrigin(origin) {
   if (!origin) return false;
+  const normalized = normalizeOrigin(origin);
   const allowed = getAllowedOrigins();
-  if (allowed.includes(origin)) return true;
+  if (allowed.includes(normalized)) return true;
   if (isProduction) return false;
-  return loopbackAliases(origin).some((candidate) => allowed.includes(candidate));
+  return loopbackAliases(normalized).some((candidate) => allowed.includes(candidate));
 }
 
 function corsOriginDelegate(origin, callback) {
@@ -234,6 +255,17 @@ function jsonBodyLimit(req) {
   return req.path?.startsWith('/api/cv/') ? '6mb' : '100kb';
 }
 
+function requestSelfOrigin(req) {
+  const host = String(req?.headers?.['x-forwarded-host'] || req?.headers?.host || '')
+    .split(',')[0]
+    .trim();
+  if (!host) return '';
+  const proto = String(req?.headers?.['x-forwarded-proto'] || (isProduction ? 'https' : 'http'))
+    .split(',')[0]
+    .trim();
+  return normalizeOrigin(`${proto}://${host}`);
+}
+
 function trustedOrigin(req) {
   if (!['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) return true;
   if (!req.path?.startsWith('/api/')) return true;
@@ -242,7 +274,9 @@ function trustedOrigin(req) {
   if (!origin) {
     return Boolean(req.headers.authorization) || !isProduction;
   }
-  return isAllowedOrigin(origin);
+  if (isAllowedOrigin(origin)) return true;
+  const self = requestSelfOrigin(req);
+  return Boolean(self) && normalizeOrigin(origin) === self;
 }
 
 const CONTROL_CHARS = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/;

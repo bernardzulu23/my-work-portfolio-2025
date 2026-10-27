@@ -122,6 +122,33 @@ describe('backend security helpers', () => {
     }
   });
 
+  it('ignores trailing slashes on allowed origins', () => {
+    const previous = process.env.ALLOWED_ORIGINS;
+    process.env.ALLOWED_ORIGINS = 'https://my-work-portfolio-2025.vercel.app/';
+    try {
+      assert.equal(isAllowedOrigin('https://my-work-portfolio-2025.vercel.app'), true);
+      assert.equal(isAllowedOrigin('https://my-work-portfolio-2025.vercel.app/'), true);
+    } finally {
+      if (previous === undefined) delete process.env.ALLOWED_ORIGINS;
+      else process.env.ALLOWED_ORIGINS = previous;
+    }
+  });
+
+  it('allows same-origin API posts from the request host', () => {
+    assert.equal(
+      trustedOrigin({
+        method: 'POST',
+        path: '/api/auth/login',
+        headers: {
+          origin: 'https://my-work-portfolio-2025.vercel.app',
+          host: 'my-work-portfolio-2025.vercel.app',
+          'x-forwarded-proto': 'https'
+        }
+      }),
+      true
+    );
+  });
+
   it('requires auth for contact reads and admin MFA setup', () => {
     assert.equal(isPublicApiRoute('GET', '/api/contact'), false);
     assert.equal(isPublicApiRoute('POST', '/api/projects'), false);
