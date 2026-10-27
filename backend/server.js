@@ -39,7 +39,13 @@ require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') }
 require('dotenv').config({ path: require('path').join(__dirname, '..', '.env.local') });
 require('dotenv').config();
 
-assertProductionSecrets();
+let bootError = null;
+try {
+  assertProductionSecrets();
+} catch (err) {
+  bootError = err;
+  console.error('Server boot configuration error:', err.message);
+}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -49,6 +55,9 @@ const JWT_SECRET = process.env.JWT_SECRET || 'dev-jwt-secret-change-in-productio
 const allowedOrigins = getAllowedOrigins();
 
 app.disable('x-powered-by');
+// Vercel sits behind a proxy and sets X-Forwarded-For. Without this,
+// express-rate-limit throws and every /api request returns FUNCTION_INVOCATION_FAILED.
+app.set('trust proxy', 1);
 
 app.use(helmet({
   contentSecurityPolicy: false,
@@ -79,55 +88,62 @@ app.use((req, res, next) => {
 });
 
 app.use((req, res, next) => {
+  if (bootError) {
+    return res.status(503).json({ success: false, error: 'Server is misconfigured' });
+  }
+  next();
+});
+
+app.use((req, res, next) => {
   if (trustedOrigin(req)) return next();
   return res.status(403).json({ error: 'Forbidden' });
 });
 
-const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 5,
+const limiterBase = {
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { xForwardedForHeader: false }
+};
+
+const loginLimiter = rateLimit({
+  ...limiterBase,
+  windowMs: 15 * 60 * 1000,
+  max: 5,
   message: { success: false, error: 'Too many login attempts. Try again later.' }
 });
 
 const contactLimiter = rateLimit({
+  ...limiterBase,
   windowMs: 60 * 60 * 1000,
   max: 10,
-  standardHeaders: true,
-  legacyHeaders: false,
   message: { error: 'Too many messages sent. Please try again later.' }
 });
 
 const writeLimiter = rateLimit({
+  ...limiterBase,
   windowMs: 15 * 60 * 1000,
   max: 120,
-  standardHeaders: true,
-  legacyHeaders: false,
   message: { error: 'Too many requests. Please slow down.' }
 });
 
 const mfaLimiter = rateLimit({
+  ...limiterBase,
   windowMs: 15 * 60 * 1000,
   max: 10,
-  standardHeaders: true,
-  legacyHeaders: false,
   message: { success: false, error: 'Too many verification attempts. Try again later.' }
 });
 
 const cvLimiter = rateLimit({
+  ...limiterBase,
   windowMs: 15 * 60 * 1000,
   max: 10,
-  standardHeaders: true,
-  legacyHeaders: false,
   message: { error: 'Too many CV import requests. Try again later.' }
 });
 
 const publicGetLimiter = rateLimit({
+  ...limiterBase,
   windowMs: 15 * 60 * 1000,
   max: 300,
-  standardHeaders: true,
-  legacyHeaders: false,
   message: { error: 'Too many requests. Please slow down.' }
 });
 
@@ -1753,6 +1769,12 @@ app.get('/api/health', async (_req, res) => {
       timestamp: new Date().toISOString()
     });
   }
+});
+
+app.use((err, req, res, next) => {
+  console.error(err);
+  if (res.headersSent) return next(err);
+  res.status(500).json({ success: false, error: 'Unable to complete request' });
 });
 
 if (!process.env.VERCEL) {

@@ -541,6 +541,9 @@ export class AuthService {
     if (typeof value === 'string') {
       const trimmed = value.trim();
       if (!trimmed || trimmed === '[object Object]') return fallback;
+      if (/FUNCTION_INVOCATION_FAILED|A server error has occurred/i.test(trimmed)) {
+        return fallback;
+      }
       return trimmed;
     }
     if (value instanceof HttpErrorResponse) {
