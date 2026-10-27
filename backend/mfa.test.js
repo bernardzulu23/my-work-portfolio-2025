@@ -104,6 +104,12 @@ describe('MFA helpers', () => {
 
     assert.throws(() => mfa.getWebAuthnConfig({}, []), /not configured/);
 
+    const fromHost = mfa.getWebAuthnConfig({
+      headers: { host: 'my-work-portfolio-2025.vercel.app' }
+    }, []);
+    assert.equal(fromHost.rpID, 'my-work-portfolio-2025.vercel.app');
+    assert.equal(fromHost.origin, 'https://my-work-portfolio-2025.vercel.app');
+
     process.env.WEBAUTHN_RP_ID = 'example.com';
     process.env.WEBAUTHN_ORIGIN = 'https://example.com';
     const config = mfa.getWebAuthnConfig({ headers: { origin: 'https://evil.example' } }, []);

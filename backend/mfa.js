@@ -318,12 +318,43 @@ function isProd() {
   return process.env.NODE_ENV === 'production' || process.env.VERCEL === '1';
 }
 
+function isLocalHost(value) {
+  const host = String(value || '').toLowerCase().split(':')[0];
+  return !host || host === 'localhost' || host === '127.0.0.1' || host.endsWith('.localhost');
+}
+
+function isMobileRequest(req) {
+  return /Android|iPhone|iPad|iPod/i.test(String(req?.headers?.['user-agent'] || ''));
+}
+
+function requestPublicHost(req) {
+  const forwarded = String(req?.headers?.['x-forwarded-host'] || '').split(',')[0].trim();
+  const hostHeader = String(req?.headers?.host || '').split(',')[0].trim();
+  const host = (forwarded || hostHeader).split(':')[0];
+  return isLocalHost(host) ? '' : host;
+}
+
 function getWebAuthnConfig(req, allowedOrigins = []) {
   const rpName = process.env.WEBAUTHN_RP_NAME || 'BluePeack Technologies';
 
   if (isProd()) {
-    const rpID = process.env.WEBAUTHN_RP_ID;
-    const origin = process.env.WEBAUTHN_ORIGIN;
+    let rpID = process.env.WEBAUTHN_RP_ID;
+    let origin = process.env.WEBAUTHN_ORIGIN;
+    try {
+      if (isLocalHost(rpID) || (origin && isLocalHost(new URL(origin).hostname))) {
+        rpID = '';
+        origin = '';
+      }
+    } catch {
+      origin = '';
+    }
+    if (!rpID || !origin) {
+      const host = requestPublicHost(req);
+      if (host) {
+        rpID = rpID || host;
+        origin = origin || `https://${host}`;
+      }
+    }
     if (!rpID || !origin) {
       const error = new Error('WebAuthn is not configured');
       error.status = 503;
@@ -393,6 +424,7 @@ async function createRegistrationOptions(db, email, req, allowedOrigins) {
       transports: parseJson(key.transports, [])
     })),
     authenticatorSelection: {
+      ...(isMobileRequest(req) ? { authenticatorAttachment: 'platform' } : {}),
       residentKey: 'preferred',
       userVerification: REQUIRE_USER_VERIFICATION ? 'required' : 'preferred'
     }

@@ -92,7 +92,9 @@ import { BrandLogoComponent } from '../../../shared/components/brand-logo/brand-
         @if (step() === 'passkey') {
           <div class="space-y-4">
             <p class="text-sm text-slate-300">
-              Add a passkey with Windows Hello, Touch ID, Face ID, or a security key so you can sign in without typing a password.
+              {{ isMobileDevice()
+                ? 'Add this phone’s fingerprint or Face ID so the next login can use biometrics instead of only a password.'
+                : 'Add a passkey with Windows Hello, Touch ID, Face ID, or a security key so you can sign in without typing a password.' }}
             </p>
             <button type="button" (click)="onAddPasskey()" [disabled]="busy() || !supportsPasskeys"
                     class="w-full py-2 rounded-md text-white bg-blue-600 disabled:opacity-50">
@@ -154,9 +156,15 @@ export class AdminSetupComponent {
     }
   }
 
+  isMobileDevice(): boolean {
+    if (typeof navigator === 'undefined') return false;
+    return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  }
+
   passkeyLabel() {
-    if (this.busy()) return 'Waiting for passkey...';
-    return this.supportsPasskeys ? 'Add a passkey' : 'Passkeys are not supported in this browser';
+    if (this.busy()) return 'Waiting for fingerprint or passkey...';
+    if (!this.supportsPasskeys) return 'Passkeys are not supported in this browser';
+    return this.isMobileDevice() ? 'Add fingerprint or Face ID' : 'Add a passkey';
   }
 
   async onChangePassword() {
@@ -168,7 +176,7 @@ export class AdminSetupComponent {
     }
     const strength = this.security.validatePasswordStrength(newPassword || '');
     if (!strength.valid || (newPassword || '').length < 12) {
-      this.error.set(strength.errors[0] || 'Choose a stronger password');
+      this.error.set(this.asMessage(strength.errors[0], 'Choose a stronger password'));
       return;
     }
 
@@ -177,7 +185,7 @@ export class AdminSetupComponent {
     try {
       const result = await this.auth.changePassword(currentPassword || '', newPassword || '');
       if (!result.success) {
-        this.error.set(result.error || 'Could not update password');
+        this.error.set(this.asMessage(result.error, 'Could not update password'));
         return;
       }
       this.notifications.success('Password updated', 'Set up an authenticator app next.');
@@ -205,7 +213,7 @@ export class AdminSetupComponent {
     try {
       const result = await this.auth.enableTotp(setup.setupToken, this.totpForm.value.code || '');
       if (!result.success) {
-        this.error.set(result.error || 'Invalid authenticator code');
+        this.error.set(this.asMessage(result.error, 'Invalid authenticator code'));
         return;
       }
       this.totpSetup.set(null);
@@ -228,9 +236,9 @@ export class AdminSetupComponent {
     this.busy.set(true);
     this.error.set(null);
     try {
-      const result = await this.auth.registerPasskey('Admin passkey');
+      const result = await this.auth.registerPasskey(this.isMobileDevice() ? 'Phone fingerprint' : 'Admin passkey');
       if (!result.success) {
-        this.error.set(result.error || 'Could not register this passkey');
+        this.error.set(this.asMessage(result.error, 'Could not register this passkey'));
         return;
       }
       this.notifications.success('Passkey added', 'Your admin account is ready.');
@@ -240,13 +248,30 @@ export class AdminSetupComponent {
     }
   }
 
+  private asMessage(value: unknown, fallback: string): string {
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (trimmed && trimmed !== '[object Object]') return trimmed;
+    }
+    if (value && typeof value === 'object') {
+      const record = value as Record<string, unknown>;
+      for (const key of ['error', 'message', 'msg', 'detail']) {
+        const inner = record[key];
+        if (typeof inner === 'string' && inner.trim() && inner !== '[object Object]') {
+          return inner.trim();
+        }
+      }
+    }
+    return fallback;
+  }
+
   async onSkipPasskey() {
     this.busy.set(true);
     this.error.set(null);
     try {
       const result = await this.auth.skipPasskeySetup();
       if (!result.success) {
-        this.error.set(result.error || 'Unable to continue');
+        this.error.set(this.asMessage(result.error, 'Unable to continue'));
         return;
       }
       void this.router.navigate(['/admin']);

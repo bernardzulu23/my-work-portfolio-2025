@@ -151,6 +151,22 @@ describe('AuthService', () => {
     const result = await signInPromise;
     expect(result.success).toBe(false);
     expect(result.error).toContain('Invalid email or password');
+    expect(result.error).not.toContain('[object Object]');
+  });
+
+  it('should stringify object API errors instead of leaking [object Object]', async () => {
+    const signInPromise = service.signIn('admin@example.com', 'wrong');
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/auth/login`);
+    req.flush(
+      { success: false, error: { message: 'Invalid email or password' } },
+      { status: 401, statusText: 'Unauthorized' }
+    );
+
+    const result = await signInPromise;
+    expect(result.success).toBe(false);
+    expect(result.error).toBe('Invalid email or password');
+    expect(result.error).not.toContain('[object Object]');
   });
 
   it('should detect and reject XSS attempts', async () => {

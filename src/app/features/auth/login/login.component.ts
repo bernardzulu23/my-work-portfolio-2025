@@ -95,7 +95,15 @@ export class LoginComponent {
         this.step.set('mfa');
         this.methods.set(result.methods || { totp: false, passkey: false, recovery: false });
         this.mfaMode.set(result.methods?.totp ? 'totp' : 'recovery');
-        this.notificationService.info('Additional verification', 'Enter your second factor to finish signing in.');
+        this.notificationService.info(
+          'Additional verification',
+          this.isMobileDevice()
+            ? 'Use fingerprint, Face ID, or your authenticator app to finish signing in.'
+            : 'Confirm it is you with a passkey or authenticator code.'
+        );
+        if (result.methods?.passkey && this.supportsPasskeys) {
+          void this.onPasskeyLogin(true);
+        }
         return;
       }
 
@@ -104,9 +112,9 @@ export class LoginComponent {
         return;
       }
 
-      this.handleFailedPassword();
-    } catch {
-      this.loginError.set('Unable to sign in. Please try again later.');
+      this.handleFailedPassword(result.error);
+    } catch (error) {
+      this.setLoginError(error, 'Unable to sign in. Please try again later.');
     } finally {
       this.isLoading.set(false);
     }
@@ -130,7 +138,7 @@ export class LoginComponent {
       if (result.success) {
         this.finishLogin();
       } else {
-        this.loginError.set(result.error || 'Passkey sign in failed');
+        this.setLoginError(result.error, 'Passkey sign in failed');
       }
     } finally {
       this.passkeyLoading.set(false);
@@ -148,7 +156,7 @@ export class LoginComponent {
     this.loginError.set(null);
   }
 
-  private handleFailedPassword() {
+  private handleFailedPassword(error?: unknown) {
     const attempts = this.failedAttempts() + 1;
     this.failedAttempts.set(attempts);
 
@@ -158,7 +166,44 @@ export class LoginComponent {
       return;
     }
 
-    this.loginError.set('Invalid email or password. Please try again.');
+    this.setLoginError(error, 'Invalid email or password. Please try again.');
+  }
+
+  isMobileDevice(): boolean {
+    if (typeof navigator === 'undefined') return false;
+    return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  }
+
+  passkeyButtonLabel(loading: boolean, forMfa: boolean): string {
+    if (loading) return 'Waiting for fingerprint or passkey...';
+    if (this.isMobileDevice()) {
+      return forMfa ? 'Use fingerprint or Face ID' : 'Sign in with fingerprint';
+    }
+    return forMfa ? 'Use a passkey' : 'Sign in with a passkey';
+  }
+
+  private setLoginError(value: unknown, fallback: string) {
+    this.loginError.set(this.asMessage(value, fallback));
+  }
+
+  private asMessage(value: unknown, fallback: string): string {
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (trimmed && trimmed !== '[object Object]') return trimmed;
+    }
+    if (value instanceof Error && value.message && value.message !== '[object Object]') {
+      return value.message;
+    }
+    if (value && typeof value === 'object') {
+      const record = value as Record<string, unknown>;
+      for (const key of ['error', 'message', 'msg', 'detail']) {
+        const inner = record[key];
+        if (typeof inner === 'string' && inner.trim() && inner !== '[object Object]') {
+          return inner.trim();
+        }
+      }
+    }
+    return fallback;
   }
 
   private remainingLockoutSeconds(): number {
@@ -177,7 +222,7 @@ export class LoginComponent {
       if (result.success) {
         this.finishLogin();
       } else {
-        this.loginError.set(result.error || 'Invalid verification code');
+        this.setLoginError(result.error, 'Invalid verification code');
       }
     } finally {
       this.isLoading.set(false);

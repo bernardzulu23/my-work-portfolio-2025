@@ -533,9 +533,32 @@ export class AuthService {
   }
 
   private readError(error: unknown, fallback: string): string {
-    if (error instanceof HttpErrorResponse) {
-      const body = error.error as { error?: string } | null;
-      if (body?.error) return body.error;
+    return this.stringifyUserError(error, fallback);
+  }
+
+  private stringifyUserError(value: unknown, fallback: string, depth = 0): string {
+    if (depth > 5) return fallback;
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (!trimmed || trimmed === '[object Object]') return fallback;
+      return trimmed;
+    }
+    if (value instanceof HttpErrorResponse) {
+      const fromBody = this.stringifyUserError(value.error, '', depth + 1);
+      if (fromBody) return fromBody;
+      return fallback;
+    }
+    if (value instanceof Error && value.message) {
+      return this.stringifyUserError(value.message, fallback, depth + 1);
+    }
+    if (value && typeof value === 'object') {
+      const record = value as Record<string, unknown>;
+      for (const key of ['error', 'message', 'msg', 'detail']) {
+        if (record[key] !== undefined) {
+          const inner = this.stringifyUserError(record[key], '', depth + 1);
+          if (inner) return inner;
+        }
+      }
     }
     return fallback;
   }

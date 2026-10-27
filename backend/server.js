@@ -447,7 +447,10 @@ const requireAdmin = async (req, res, next) => {
 
 const rejectInvalid = (res, parsed) => {
   if (parsed.valid) return false;
-  res.status(400).json({ error: parsed.error });
+  const message = typeof parsed.error === 'string' && parsed.error.trim()
+    ? parsed.error
+    : 'Invalid input';
+  res.status(400).json({ error: message });
   return true;
 };
 
