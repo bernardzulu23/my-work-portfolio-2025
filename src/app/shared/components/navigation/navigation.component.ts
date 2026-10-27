@@ -19,7 +19,7 @@ interface NavItem {
   standalone: true,
   imports: [CommonModule, RouterModule, ThemeToggleComponent, BrandLogoComponent],
   template: `
-    <nav class="bg-brand-navy shadow-lg sticky top-0 z-50">
+    <nav class="bg-brand-navy shadow-lg sticky top-0 z-[100]">
       <div class="container mx-auto px-4">
         <div class="flex justify-between items-center min-h-[4.5rem] md:min-h-[5.5rem] py-2 gap-3">
           <app-brand-logo size="md" data-testid="brand-logo" class="min-w-0"></app-brand-logo>
@@ -64,12 +64,12 @@ interface NavItem {
             </div>
           </div>
 
-          <div class="flex items-center gap-1 sm:gap-2 shrink-0">
+          <div class="relative z-[110] flex items-center gap-1 sm:gap-2 shrink-0">
             <app-theme-toggle></app-theme-toggle>
 
             <button
               (click)="toggleMobileMenu()"
-              class="xl:hidden mobile-menu-button inline-flex items-center justify-center w-11 h-11 p-2 rounded-md text-slate-200 hover:text-brand-gold hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-brand-gold"
+              class="xl:hidden mobile-menu-button relative z-[110] inline-flex items-center justify-center w-11 h-11 p-2 rounded-md text-slate-200 hover:text-brand-gold hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-brand-gold"
               [attr.aria-expanded]="mobileMenuOpen()">
               <span class="sr-only">Open main menu</span>
               <svg *ngIf="!mobileMenuOpen()" class="block h-6 w-6" width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
