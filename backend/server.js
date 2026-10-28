@@ -1,4 +1,4 @@
-
+require('./load-env');
 const express = require('express');
 const cors = require('cors');
 const crypto = require('crypto');
@@ -35,9 +35,6 @@ const cv = require('./cv');
 const contactMail = require('./contact-mail');
 const storage = require('./storage');
 const realtime = require('./realtime');
-require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
-require('dotenv').config({ path: require('path').join(__dirname, '..', '.env.local') });
-require('dotenv').config();
 
 let bootError = null;
 try {

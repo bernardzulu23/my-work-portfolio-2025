@@ -6,11 +6,17 @@ const {
   skillKey,
   extractJsonObject,
   buildParsePrompt,
+  buildChatCompletionBody,
   normalizeCvPayload,
   decodePdfBase64,
   patchEmptyAboutFields,
   MAX_PDF_BYTES,
-  listAiProviders
+  MIN_SK_PROJ_LENGTH,
+  listAiProviders,
+  sanitizeApiKey,
+  assertUsableApiKey,
+  publicAiError,
+  parseCvWithAi
 } = require('./cv');
 
 describe('cv helpers', () => {
@@ -87,21 +93,25 @@ describe('cv helpers', () => {
     assert.match(prompt, /untrusted data/);
   });
 
-  it('skips empty OpenAI keys and can fall back after Neon', () => {
+  it('uses OpenAI alone when a direct sk- key is set, and Neon only without one', () => {
     const previous = {
       neonToken: process.env.NEON_AI_GATEWAY_TOKEN,
       neonBase: process.env.NEON_AI_GATEWAY_BASE_URL,
       openai: process.env.OPENAI_API_KEY,
+      openaiBase: process.env.OPENAI_BASE_URL,
       gateway: process.env.AI_GATEWAY_API_KEY
     };
     process.env.NEON_AI_GATEWAY_TOKEN = 'nt_test';
     process.env.NEON_AI_GATEWAY_BASE_URL = 'https://example.neon.tech';
     process.env.OPENAI_API_KEY = '';
+    process.env.OPENAI_BASE_URL = 'https://br-example.neon.tech/v1';
     process.env.AI_GATEWAY_API_KEY = '';
     try {
       assert.deepEqual(listAiProviders().map((provider) => provider.name), ['neon']);
       process.env.OPENAI_API_KEY = 'sk-test';
-      assert.deepEqual(listAiProviders().map((provider) => provider.name), ['openai', 'neon']);
+      const providers = listAiProviders();
+      assert.deepEqual(providers.map((provider) => provider.name), ['openai']);
+      assert.equal(providers[0].baseUrl, 'https://api.openai.com/v1');
     } finally {
       if (previous.neonToken === undefined) delete process.env.NEON_AI_GATEWAY_TOKEN;
       else process.env.NEON_AI_GATEWAY_TOKEN = previous.neonToken;
@@ -109,8 +119,56 @@ describe('cv helpers', () => {
       else process.env.NEON_AI_GATEWAY_BASE_URL = previous.neonBase;
       if (previous.openai === undefined) delete process.env.OPENAI_API_KEY;
       else process.env.OPENAI_API_KEY = previous.openai;
+      if (previous.openaiBase === undefined) delete process.env.OPENAI_BASE_URL;
+      else process.env.OPENAI_BASE_URL = previous.openaiBase;
       if (previous.gateway === undefined) delete process.env.AI_GATEWAY_API_KEY;
       else process.env.AI_GATEWAY_API_KEY = previous.gateway;
     }
+  });
+
+  it('omits temperature for gpt-5-mini and keeps it for gpt-4o-mini', () => {
+    const gpt5 = buildChatCompletionBody({ model: 'gpt-5-mini' }, 'Jane Doe, software engineer in Nairobi.');
+    assert.equal(Object.hasOwn(gpt5, 'temperature'), false);
+    assert.equal(gpt5.reasoning_effort, 'low');
+    assert.deepEqual(gpt5.response_format, { type: 'json_object' });
+
+    const gpt4 = buildChatCompletionBody({ model: 'gpt-4o-mini' }, 'Jane Doe, software engineer in Nairobi.');
+    assert.equal(gpt4.temperature, 0.1);
+    assert.equal(Object.hasOwn(gpt4, 'reasoning_effort'), false);
+  });
+
+  it('strips quotes and whitespace from API keys', () => {
+    assert.equal(sanitizeApiKey('  "sk-proj-abc"  '), 'sk-proj-abc');
+  });
+
+  it('rejects truncated sk-proj keys before fetch', async () => {
+    const shortKey = 'sk-proj-truncated';
+    assert.ok(shortKey.length < MIN_SK_PROJ_LENGTH);
+    assert.throws(() => assertUsableApiKey(shortKey), /truncated/);
+
+    const previous = process.env.OPENAI_API_KEY;
+    process.env.OPENAI_API_KEY = shortKey;
+    process.env.AI_GATEWAY_API_KEY = '';
+    try {
+      await assert.rejects(() => parseCvWithAi('Jane Doe is a software engineer with ten years of experience.'), /truncated/);
+    } finally {
+      if (previous === undefined) delete process.env.OPENAI_API_KEY;
+      else process.env.OPENAI_API_KEY = previous;
+    }
+  });
+
+  it('surfaces OpenAI parameter and model errors instead of a generic key failure', () => {
+    assert.match(
+      publicAiError('openai', "Unsupported value: 'temperature' does not support 0.1 with this model."),
+      /OPENAI_MODEL rejected a request parameter/
+    );
+    assert.match(
+      publicAiError('openai', 'The model `gpt-5-mini` does not exist'),
+      /OPENAI_MODEL is not available/
+    );
+    assert.match(
+      publicAiError('openai', 'rate limit exceeded'),
+      /OpenAI could not parse the CV: rate limit exceeded/
+    );
   });
 });

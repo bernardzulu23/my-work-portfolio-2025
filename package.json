@@ -20,7 +20,7 @@
     "preview": "ng serve --prod",
     "test:ci": "ng test --no-watch --no-progress --browsers=ChromeHeadless",
     "test:coverage": "ng test --code-coverage",
-    "test:backend-security": "node --test backend/security.test.js backend/mfa.test.js backend/cv.test.js backend/contact-mail.test.js backend/admin-account.test.js",
+    "test:backend-security": "node --test backend/security.test.js backend/mfa.test.js backend/cv.test.js backend/contact-mail.test.js backend/admin-account.test.js backend/load-env.test.js",
     "postinstall": "node scripts/fix-angular-dts.js"
   },
   "lint-staged": {

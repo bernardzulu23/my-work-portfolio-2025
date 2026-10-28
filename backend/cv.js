@@ -163,40 +163,127 @@ async function extractPdfText(buffer) {
   return String(result?.text || '').trim();
 }
 
+const MIN_SK_PROJ_LENGTH = 80;
+
 function nonEmptyEnv(value) {
   return typeof value === 'string' && value.trim() !== '';
 }
 
+function sanitizeApiKey(value) {
+  return String(value || '')
+    .trim()
+    .replace(/^['"]+|['"]+$/g, '')
+    .replace(/\s+/g, '')
+    .trim();
+}
+
+function isDirectOpenAiKey(value) {
+  const key = sanitizeApiKey(value);
+  return key.startsWith('sk-') && !key.startsWith('sk-or-');
+}
+
+function isTruncatedProjectKey(value) {
+  const key = sanitizeApiKey(value);
+  return key.startsWith('sk-proj-') && key.length < MIN_SK_PROJ_LENGTH;
+}
+
+function assertUsableApiKey(apiKey) {
+  const key = sanitizeApiKey(apiKey);
+  if (isTruncatedProjectKey(key)) {
+    const error = new Error(
+      'OPENAI_API_KEY looks truncated. Paste the full sk-proj key from https://platform.openai.com/api-keys into .env.local and restart the API.'
+    );
+    error.status = 401;
+    error.httpStatus = 401;
+    throw error;
+  }
+  return key;
+}
+
+function resolvedModel() {
+  return String(process.env.OPENAI_MODEL || 'gpt-4o-mini').trim() || 'gpt-4o-mini';
+}
+
+function isGpt5Family(model) {
+  return /^gpt-5/i.test(String(model || '').trim());
+}
+
+function omitsSamplingParams(model) {
+  const id = String(model || '').trim().toLowerCase();
+  if (!id) return false;
+  if (/^o[1-4]/.test(id)) return true;
+  if (/^gpt-5-mini/.test(id) || /^gpt-5-nano/.test(id) || /^gpt-5-pro/.test(id)) return true;
+  if (/^gpt-5$/.test(id) || /^gpt-5-\d{4}/.test(id)) return true;
+  return false;
+}
+
+function buildChatCompletionBody(provider, cvText) {
+  const body = {
+    model: provider.model,
+    response_format: { type: 'json_object' },
+    messages: [
+      { role: 'system', content: 'You extract structured resume data as strict JSON. Never include commentary.' },
+      { role: 'user', content: buildParsePrompt(cvText) }
+    ]
+  };
+
+  if (omitsSamplingParams(provider.model)) {
+    if (isGpt5Family(provider.model)) {
+      body.reasoning_effort = 'low';
+    }
+  } else {
+    body.temperature = 0.1;
+  }
+
+  return body;
+}
+
+function openaiCompatibleBaseUrl(apiKey) {
+  const envBase = String(process.env.OPENAI_BASE_URL || '').trim().replace(/\/$/, '');
+  if (isDirectOpenAiKey(apiKey)) {
+    return 'https://api.openai.com/v1';
+  }
+  if (envBase) return envBase;
+  return 'https://api.openai.com/v1';
+}
+
 function listAiProviders() {
   const providers = [];
-  const openaiKey = (process.env.OPENAI_API_KEY || '').trim();
+  const openaiKey = sanitizeApiKey(process.env.OPENAI_API_KEY);
+  const model = resolvedModel();
   if (openaiKey) {
     providers.push({
       name: 'openai',
       apiKey: openaiKey,
-      baseUrl: (process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/$/, ''),
-      model: process.env.OPENAI_MODEL || 'gpt-4o-mini'
+      baseUrl: openaiCompatibleBaseUrl(openaiKey),
+      model
     });
   }
 
-  const gatewayKey = (process.env.AI_GATEWAY_API_KEY || '').trim();
+  const gatewayKey = sanitizeApiKey(process.env.AI_GATEWAY_API_KEY);
   if (gatewayKey && gatewayKey !== openaiKey) {
     providers.push({
       name: 'vercel-gateway',
       apiKey: gatewayKey,
       baseUrl: 'https://ai-gateway.vercel.sh/v1',
-      model: process.env.OPENAI_MODEL || 'gpt-4o-mini'
+      model
     });
   }
 
-  const neonToken = process.env.NEON_AI_GATEWAY_TOKEN || '';
+  // A real OpenAI key should not fall through to Neon. Neon credits errors were
+  // hiding the actual OpenAI failure (invalid/truncated key).
+  if (isDirectOpenAiKey(openaiKey)) {
+    return providers;
+  }
+
+  const neonToken = sanitizeApiKey(process.env.NEON_AI_GATEWAY_TOKEN);
   const neonBase = String(process.env.NEON_AI_GATEWAY_BASE_URL || '').replace(/\/$/, '');
   if (nonEmptyEnv(neonToken) && nonEmptyEnv(neonBase)) {
     providers.push({
       name: 'neon',
-      apiKey: neonToken.trim(),
+      apiKey: neonToken,
       baseUrl: `${neonBase}/v1`,
-      model: process.env.OPENAI_MODEL || 'gpt-4o-mini'
+      model
     });
   }
 
@@ -208,16 +295,26 @@ function getAiConfig() {
     name: 'none',
     apiKey: '',
     baseUrl: 'https://api.openai.com/v1',
-    model: process.env.OPENAI_MODEL || 'gpt-4o-mini'
+    model: resolvedModel()
   };
 }
 
-function shouldTryNextProvider(status, message) {
-  const text = String(message || '').toLowerCase();
+function shouldTryNextProvider(err) {
+  const status = Number(err?.httpStatus || err?.status);
+  const text = String(err?.detail || err?.message || '').toLowerCase();
+  if (
+    status === 401 ||
+    text.includes('incorrect api key') ||
+    text.includes('invalid api key') ||
+    text.includes('invalid_api_key')
+  ) {
+    return false;
+  }
   return (
     status === 402 ||
     status === 403 ||
     status === 429 ||
+    status === 503 ||
     text.includes('credit') ||
     text.includes('quota') ||
     text.includes('insufficient') ||
@@ -228,12 +325,32 @@ function shouldTryNextProvider(status, message) {
   );
 }
 
-function publicAiError(message) {
-  const text = String(message || '');
-  if (/credit/i.test(text)) {
-    return 'Neon AI Gateway needs credits. Add credits in the Neon console, or CV parse will use OPENAI_API_KEY if it is set.';
+function publicAiError(providerName, message) {
+  const text = String(message || '').trim();
+  if (/looks truncated/i.test(text)) {
+    return text;
   }
-  return 'AI parse failed';
+  if (/incorrect api key|invalid api key|invalid_api_key/i.test(text)) {
+    return 'OpenAI rejected OPENAI_API_KEY. Paste a full key from https://platform.openai.com/api-keys into .env.local and restart the API.';
+  }
+  if (/unsupported.*(temperature|top_p)|does not support.*temperature|unsupported parameter/i.test(text)) {
+    return `OPENAI_MODEL rejected a request parameter: ${text}`;
+  }
+  if (/model_not_found|does not exist|invalid model|model.*not found/i.test(text)) {
+    return `OPENAI_MODEL is not available: ${text}`;
+  }
+  if (/credit/i.test(text)) {
+    if (providerName === 'openai') {
+      return 'OpenAI returned a billing/credits error. Check usage at https://platform.openai.com/account/billing.';
+    }
+    return 'Neon AI Gateway needs credits. Add credits in the Neon console, or set a valid OPENAI_API_KEY.';
+  }
+  if (providerName === 'openai') {
+    return text
+      ? `OpenAI could not parse the CV: ${text}`
+      : 'OpenAI could not parse the CV. Check OPENAI_API_KEY and OPENAI_MODEL.';
+  }
+  return text ? `AI parse failed: ${text}` : 'AI parse failed';
 }
 
 function buildParsePrompt(cvText) {
@@ -257,29 +374,23 @@ CV_TEXT>>>`;
 }
 
 async function completeCvParse(provider, cvText) {
+  const apiKey = assertUsableApiKey(provider.apiKey);
   const response = await fetch(`${provider.baseUrl}/chat/completions`, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${provider.apiKey}`,
+      Authorization: `Bearer ${apiKey}`,
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({
-      model: provider.model,
-      temperature: 0.1,
-      response_format: { type: 'json_object' },
-      messages: [
-        { role: 'system', content: 'You extract structured resume data as strict JSON. Never include commentary.' },
-        { role: 'user', content: buildParsePrompt(cvText) }
-      ]
-    })
+    body: JSON.stringify(buildChatCompletionBody(provider, cvText))
   });
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
     const detail = payload?.error?.message || `HTTP ${response.status}`;
     console.error(`AI parse failed (${provider.name}):`, detail);
-    const error = new Error(publicAiError(detail));
-    error.status = 502;
+    const error = new Error(publicAiError(provider.name, detail));
+    error.httpStatus = response.status;
+    error.status = response.status === 401 ? 401 : 502;
     error.detail = detail;
     throw error;
   }
@@ -304,7 +415,7 @@ async function parseCvWithAi(cvText) {
     } catch (err) {
       lastError = err;
       const hasNext = index < providers.length - 1;
-      if (hasNext && shouldTryNextProvider(err.status, err.detail || err.message)) {
+      if (hasNext && shouldTryNextProvider(err)) {
         console.warn(`${provider.name} CV parse unavailable, trying the next provider`);
         continue;
       }
@@ -342,11 +453,13 @@ function newId() {
 module.exports = {
   MAX_PDF_BYTES,
   MAX_TEXT_CHARS,
+  MIN_SK_PROJ_LENGTH,
   experienceKey,
   educationKey,
   skillKey,
   extractJsonObject,
   buildParsePrompt,
+  buildChatCompletionBody,
   normalizeCvPayload,
   decodePdfBase64,
   extractPdfText,
@@ -354,5 +467,9 @@ module.exports = {
   patchEmptyAboutFields,
   newId,
   getAiConfig,
-  listAiProviders
+  listAiProviders,
+  sanitizeApiKey,
+  assertUsableApiKey,
+  publicAiError,
+  omitsSamplingParams
 };

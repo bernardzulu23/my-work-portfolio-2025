@@ -1,8 +1,5 @@
-const path = require('path');
+require('./load-env');
 const { neon } = require('@neondatabase/serverless');
-require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
-require('dotenv').config({ path: path.join(__dirname, '..', '.env.local') });
-require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const sql = neon(process.env.DATABASE_URL);
 
