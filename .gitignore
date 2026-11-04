@@ -151,3 +151,5 @@ docs/secrets.md
 # package-lock.json
 # yarn.lock
 .neon
+
+.vercel
