@@ -204,6 +204,10 @@ function resolvedModel() {
   return String(process.env.OPENAI_MODEL || 'gpt-4o-mini').trim() || 'gpt-4o-mini';
 }
 
+function resolvedGroqModel() {
+  return String(process.env.GROQ_MODEL || 'openai/gpt-oss-20b').trim() || 'openai/gpt-oss-20b';
+}
+
 function isGpt5Family(model) {
   return /^gpt-5/i.test(String(model || '').trim());
 }
@@ -248,6 +252,16 @@ function openaiCompatibleBaseUrl(apiKey) {
 }
 
 function listAiProviders() {
+  const groqKey = sanitizeApiKey(process.env.GROQ_API_KEY);
+  if (groqKey) {
+    return [{
+      name: 'groq',
+      apiKey: groqKey,
+      baseUrl: 'https://api.groq.com/openai/v1',
+      model: resolvedGroqModel()
+    }];
+  }
+
   const providers = [];
   const openaiKey = sanitizeApiKey(process.env.OPENAI_API_KEY);
   const model = resolvedModel();
@@ -331,19 +345,32 @@ function publicAiError(providerName, message) {
     return text;
   }
   if (/incorrect api key|invalid api key|invalid_api_key/i.test(text)) {
+    if (providerName === 'groq') {
+      return 'Groq rejected GROQ_API_KEY. Paste a full key from https://console.groq.com/keys into .env.local and restart the API.';
+    }
     return 'OpenAI rejected OPENAI_API_KEY. Paste a full key from https://platform.openai.com/api-keys into .env.local and restart the API.';
   }
   if (/unsupported.*(temperature|top_p)|does not support.*temperature|unsupported parameter/i.test(text)) {
-    return `OPENAI_MODEL rejected a request parameter: ${text}`;
+    const modelEnv = providerName === 'groq' ? 'GROQ_MODEL' : 'OPENAI_MODEL';
+    return `${modelEnv} rejected a request parameter: ${text}`;
   }
   if (/model_not_found|does not exist|invalid model|model.*not found/i.test(text)) {
-    return `OPENAI_MODEL is not available: ${text}`;
+    const modelEnv = providerName === 'groq' ? 'GROQ_MODEL' : 'OPENAI_MODEL';
+    return `${modelEnv} is not available: ${text}`;
   }
-  if (/credit/i.test(text)) {
+  if (/credit|billing|quota|insufficient/i.test(text)) {
+    if (providerName === 'groq') {
+      return 'Groq returned a billing/credits error. Check usage at https://console.groq.com/settings/billing.';
+    }
     if (providerName === 'openai') {
       return 'OpenAI returned a billing/credits error. Check usage at https://platform.openai.com/account/billing.';
     }
-    return 'Neon AI Gateway needs credits. Add credits in the Neon console, or set a valid OPENAI_API_KEY.';
+    return 'Neon AI Gateway needs credits. Add credits in the Neon console, or set a valid GROQ_API_KEY or OPENAI_API_KEY.';
+  }
+  if (providerName === 'groq') {
+    return text
+      ? `Groq could not parse the CV: ${text}`
+      : 'Groq could not parse the CV. Check GROQ_API_KEY and GROQ_MODEL.';
   }
   if (providerName === 'openai') {
     return text
@@ -402,7 +429,9 @@ async function completeCvParse(provider, cvText) {
 async function parseCvWithAi(cvText) {
   const providers = listAiProviders();
   if (!providers.length) {
-    const error = new Error('AI API key is not configured. Set OPENAI_API_KEY or add Neon AI Gateway credits.');
+    const error = new Error(
+      'AI API key is not configured. Set GROQ_API_KEY (preferred), OPENAI_API_KEY, or add Neon AI Gateway credits.'
+    );
     error.status = 503;
     throw error;
   }

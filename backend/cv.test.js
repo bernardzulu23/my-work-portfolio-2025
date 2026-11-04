@@ -93,14 +93,48 @@ describe('cv helpers', () => {
     assert.match(prompt, /untrusted data/);
   });
 
+  it('uses Groq alone when GROQ_API_KEY is set, even with an OpenAI sk- key', () => {
+    const previous = {
+      groq: process.env.GROQ_API_KEY,
+      groqModel: process.env.GROQ_MODEL,
+      openai: process.env.OPENAI_API_KEY,
+      neonToken: process.env.NEON_AI_GATEWAY_TOKEN,
+      neonBase: process.env.NEON_AI_GATEWAY_BASE_URL
+    };
+    process.env.GROQ_API_KEY = 'gsk_test';
+    process.env.GROQ_MODEL = 'openai/gpt-oss-20b';
+    process.env.OPENAI_API_KEY = 'sk-test';
+    process.env.NEON_AI_GATEWAY_TOKEN = 'nt_test';
+    process.env.NEON_AI_GATEWAY_BASE_URL = 'https://example.neon.tech';
+    try {
+      const providers = listAiProviders();
+      assert.deepEqual(providers.map((provider) => provider.name), ['groq']);
+      assert.equal(providers[0].baseUrl, 'https://api.groq.com/openai/v1');
+      assert.equal(providers[0].model, 'openai/gpt-oss-20b');
+    } finally {
+      if (previous.groq === undefined) delete process.env.GROQ_API_KEY;
+      else process.env.GROQ_API_KEY = previous.groq;
+      if (previous.groqModel === undefined) delete process.env.GROQ_MODEL;
+      else process.env.GROQ_MODEL = previous.groqModel;
+      if (previous.openai === undefined) delete process.env.OPENAI_API_KEY;
+      else process.env.OPENAI_API_KEY = previous.openai;
+      if (previous.neonToken === undefined) delete process.env.NEON_AI_GATEWAY_TOKEN;
+      else process.env.NEON_AI_GATEWAY_TOKEN = previous.neonToken;
+      if (previous.neonBase === undefined) delete process.env.NEON_AI_GATEWAY_BASE_URL;
+      else process.env.NEON_AI_GATEWAY_BASE_URL = previous.neonBase;
+    }
+  });
+
   it('uses OpenAI alone when a direct sk- key is set, and Neon only without one', () => {
     const previous = {
+      groq: process.env.GROQ_API_KEY,
       neonToken: process.env.NEON_AI_GATEWAY_TOKEN,
       neonBase: process.env.NEON_AI_GATEWAY_BASE_URL,
       openai: process.env.OPENAI_API_KEY,
       openaiBase: process.env.OPENAI_BASE_URL,
       gateway: process.env.AI_GATEWAY_API_KEY
     };
+    process.env.GROQ_API_KEY = '';
     process.env.NEON_AI_GATEWAY_TOKEN = 'nt_test';
     process.env.NEON_AI_GATEWAY_BASE_URL = 'https://example.neon.tech';
     process.env.OPENAI_API_KEY = '';
@@ -113,6 +147,8 @@ describe('cv helpers', () => {
       assert.deepEqual(providers.map((provider) => provider.name), ['openai']);
       assert.equal(providers[0].baseUrl, 'https://api.openai.com/v1');
     } finally {
+      if (previous.groq === undefined) delete process.env.GROQ_API_KEY;
+      else process.env.GROQ_API_KEY = previous.groq;
       if (previous.neonToken === undefined) delete process.env.NEON_AI_GATEWAY_TOKEN;
       else process.env.NEON_AI_GATEWAY_TOKEN = previous.neonToken;
       if (previous.neonBase === undefined) delete process.env.NEON_AI_GATEWAY_BASE_URL;
@@ -146,14 +182,23 @@ describe('cv helpers', () => {
     assert.ok(shortKey.length < MIN_SK_PROJ_LENGTH);
     assert.throws(() => assertUsableApiKey(shortKey), /truncated/);
 
-    const previous = process.env.OPENAI_API_KEY;
+    const previous = {
+      openai: process.env.OPENAI_API_KEY,
+      groq: process.env.GROQ_API_KEY,
+      gateway: process.env.AI_GATEWAY_API_KEY
+    };
     process.env.OPENAI_API_KEY = shortKey;
+    process.env.GROQ_API_KEY = '';
     process.env.AI_GATEWAY_API_KEY = '';
     try {
       await assert.rejects(() => parseCvWithAi('Jane Doe is a software engineer with ten years of experience.'), /truncated/);
     } finally {
-      if (previous === undefined) delete process.env.OPENAI_API_KEY;
-      else process.env.OPENAI_API_KEY = previous;
+      if (previous.openai === undefined) delete process.env.OPENAI_API_KEY;
+      else process.env.OPENAI_API_KEY = previous.openai;
+      if (previous.groq === undefined) delete process.env.GROQ_API_KEY;
+      else process.env.GROQ_API_KEY = previous.groq;
+      if (previous.gateway === undefined) delete process.env.AI_GATEWAY_API_KEY;
+      else process.env.AI_GATEWAY_API_KEY = previous.gateway;
     }
   });
 
@@ -170,5 +215,20 @@ describe('cv helpers', () => {
       publicAiError('openai', 'rate limit exceeded'),
       /OpenAI could not parse the CV: rate limit exceeded/
     );
+  });
+
+  it('surfaces Groq billing and model errors without mentioning OpenAI', () => {
+    const billing = publicAiError('groq', 'Insufficient credits for this request');
+    assert.match(billing, /Groq returned a billing\/credits error/);
+    assert.doesNotMatch(billing, /OpenAI/);
+    assert.match(billing, /console\.groq\.com/);
+
+    const model = publicAiError('groq', 'The model `bad-model` does not exist');
+    assert.match(model, /GROQ_MODEL is not available/);
+    assert.doesNotMatch(model, /OpenAI|OPENAI_MODEL/);
+
+    const key = publicAiError('groq', 'Invalid API Key');
+    assert.match(key, /GROQ_API_KEY/);
+    assert.doesNotMatch(key, /OpenAI|OPENAI_API_KEY/);
   });
 });
