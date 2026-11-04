@@ -102,6 +102,36 @@
     max-width: 100%;
   }
 
+  /* Keep typed text readable: dark mode body text is light, but inputs stay light unless styled. */
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not([type='hidden']):not([type='submit']):not([type='button']):not([type='reset']):not([type='image']),
+  textarea,
+  select {
+    color: #0f172a;
+    background-color: #ffffff;
+    caret-color: #0f172a;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: #94a3b8;
+    opacity: 1;
+  }
+
+  .dark input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not([type='hidden']):not([type='submit']):not([type='button']):not([type='reset']):not([type='image']),
+  .dark textarea,
+  .dark select {
+    color: #f8fafc;
+    background-color: #0f172a;
+    caret-color: #f8fafc;
+    border-color: #475569;
+  }
+
+  .dark input::placeholder,
+  .dark textarea::placeholder {
+    color: #94a3b8;
+    opacity: 1;
+  }
+
   img,
   video,
   canvas {

@@ -132,7 +132,7 @@ interface ContactForm {
                 <input
                   type="text"
                   formControlName="name"
-                  class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                  class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-950 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                   [class.border-red-500]="isFieldInvalid('name')"
                   placeholder="Your full name">
                 <div *ngIf="isFieldInvalid('name')" class="text-red-500 text-sm mt-1">
@@ -144,7 +144,7 @@ interface ContactForm {
                 <input
                   type="email"
                   formControlName="email"
-                  class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                  class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-950 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                   [class.border-red-500]="isFieldInvalid('email')"
                   placeholder="your.email@example.com">
                 <div *ngIf="isFieldInvalid('email')" class="text-red-500 text-sm mt-1">
@@ -159,7 +159,7 @@ interface ContactForm {
               <input
                 type="text"
                 formControlName="subject"
-                class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-950 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                 [class.border-red-500]="isFieldInvalid('subject')"
                 placeholder="What's this about?">
               <div *ngIf="isFieldInvalid('subject')" class="text-red-500 text-sm mt-1">
@@ -172,7 +172,7 @@ interface ContactForm {
               <textarea
                 rows="6"
                 formControlName="message"
-                class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 resize-vertical"
+                class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-950 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 resize-vertical"
                 [class.border-red-500]="isFieldInvalid('message')"
                 placeholder="Tell me about your project or inquiry..."></textarea>
               <div *ngIf="isFieldInvalid('message')" class="text-red-500 text-sm mt-1">
