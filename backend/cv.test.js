@@ -16,7 +16,9 @@ const {
   sanitizeApiKey,
   assertUsableApiKey,
   publicAiError,
-  parseCvWithAi
+  parseCvWithAi,
+  supportsGroqJsonSchema,
+  isJsonGenerationFailure
 } = require('./cv');
 
 describe('cv helpers', () => {
@@ -171,6 +173,27 @@ describe('cv helpers', () => {
     const gpt4 = buildChatCompletionBody({ model: 'gpt-4o-mini' }, 'Jane Doe, software engineer in Nairobi.');
     assert.equal(gpt4.temperature, 0.1);
     assert.equal(Object.hasOwn(gpt4, 'reasoning_effort'), false);
+  });
+
+  it('uses Groq structured outputs for gpt-oss and can disable JSON mode', () => {
+    assert.equal(supportsGroqJsonSchema('openai/gpt-oss-20b'), true);
+    assert.equal(supportsGroqJsonSchema('llama-3.1-8b-instant'), false);
+
+    const groq = buildChatCompletionBody(
+      { name: 'groq', model: 'openai/gpt-oss-20b' },
+      'Jane Doe, software engineer in Nairobi.'
+    );
+    assert.equal(groq.response_format.type, 'json_schema');
+    assert.equal(groq.response_format.json_schema.name, 'cv_extract');
+    assert.equal(groq.max_completion_tokens, 8192);
+
+    const plain = buildChatCompletionBody(
+      { name: 'groq', model: 'llama-3.1-8b-instant' },
+      'Jane Doe, software engineer in Nairobi.',
+      { allowJsonMode: false }
+    );
+    assert.equal(Object.hasOwn(plain, 'response_format'), false);
+    assert.equal(isJsonGenerationFailure('Failed to generate JSON. Please adjust your prompt.'), true);
   });
 
   it('strips quotes and whitespace from API keys', () => {
